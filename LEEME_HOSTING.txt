@@ -1,0 +1,33 @@
+CALORI PARA MOVILES - PUBLICAR EN INTERNET (gratis con Render)
+================================================================
+Asi cualquier persona entra desde su telefono a una direccion tipo https://calori.onrender.com
+Las claves de IA quedan guardadas en el servidor; los usuarios no ven ni ponen nada.
+
+ARCHIVOS A SUBIR (carpeta nueva, NO subas tu .env):
+  servidor_movil.py  calori_movil.html  requirements.txt  Procfile  .gitignore
+
+PASOS
+1. Crea una cuenta gratis en github.com y un repositorio nuevo (privado vale). Sube esos 5 archivos
+   (boton "Add file > Upload files").
+2. Crea una cuenta gratis en render.com y pulsa New > Web Service. Conecta tu GitHub y elige el repositorio.
+3. Ajustes:  Runtime = Python 3 | Build Command = pip install -r requirements.txt
+             Start Command = python servidor_movil.py | Instance type = Free
+4. En "Environment" anade tus claves (lo que tienes en el .env):
+     GEMINI_API_KEY_1 = tu_clave
+     GEMINI_API_KEY_2 = otra_clave (opcional)
+     GEMINI_API_KEY_3 = otra_clave (opcional)
+   Opcionales para proteger tu cuota (valores por defecto entre parentesis):
+     LIMITE_HORA = 30        analisis por usuario y hora
+     LIMITE_DIA_TOTAL = 1500 analisis totales al dia
+5. Pulsa Create Web Service. Cuando termine te da la direccion https://...onrender.com. Compartela.
+
+PARA LOS USUARIOS: abrir la direccion en el movil > menu del navegador > "Anadir a pantalla de inicio".
+
+IMPORTANTE
+- Plan gratis de Render: la primera visita tras un rato sin uso tarda ~30-60 s en despertar.
+- Las fotos pasan por el servidor hasta Gemini; el servidor no las guarda.
+  Avisa a tus usuarios de que se envian a Google Gemini para analizarlas.
+- Todos los analisis gastan TUS claves: vigila el uso en Google AI Studio y ajusta los limites.
+- Los datos de cada usuario (comidas, plan, fotos) se guardan solo en su movil; si borra los datos del
+  navegador, se pierden.
+- Nunca subas el archivo .env a GitHub.
