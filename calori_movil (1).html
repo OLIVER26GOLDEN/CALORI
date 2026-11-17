@@ -201,9 +201,11 @@ function vPlanCard(){
   const pl=planDe(perfil);let aviso;
   if(!pl.kg)aviso=perfil.meta==="Mantener"?"Objetivo: mantener tu peso. Tu límite es de mantenimiento.":"Tu peso objetivo no te pide cambiar de peso: tu límite es de mantenimiento.";
   else aviso=`Meta: ${perfil.peso} → ${perfil.peso_objetivo} kg en ${fmtPlazo(diasDe(perfil))}. Ritmo: ${pl.ritmo.toFixed(2)} kg/semana. ${perfil.meta==="Adelgazar"?`Por seguridad nunca bajamos de ${pl.minimo} kcal/día.`:"Por seguridad subimos de forma gradual."}`;
-  return`<div class="t" style="font-size:22px">Tu plan</div><div class="mu" style="margin-bottom:12px">Según tu perfil y tu objetivo</div>
-  <div class="tile"><div class="mi">Límite diario</div><div class="t" style="font-size:32px;color:var(--pr)">${pl.objetivo} kcal</div><div class="mu">Metabolismo basal: ${pl.bmr} kcal</div><div class="mu">Gasto diario total: ${pl.tdee} kcal</div><div class="mu" style="margin-top:6px">${esc(aviso)}</div></div>
-  <button style="width:100%;margin-top:12px" onclick="wizIni()">Cambiar mi plan paso a paso</button>`;
+  return`<div class="t" style="font-size:15px">Tu plan</div>
+  <div class="r sb" style="margin-top:6px"><span class="mi">Límite diario</span><b style="font-size:20px;color:var(--pr)">${pl.objetivo} kcal</b></div>
+  <div class="mu" style="margin-top:4px">Metabolismo basal: ${pl.bmr} kcal · Gasto diario total: ${pl.tdee} kcal</div>
+  <div class="mu" style="margin-top:4px">${esc(aviso)}</div>
+  <button class="sm" style="width:100%;margin-top:8px" onclick="wizIni()">Cambiar mi plan paso a paso</button>`;
 }
 function vWiz(){
   const[k,q]=STEPS[wz.i],n=STEPS.length;let inp="";
@@ -230,7 +232,7 @@ function vDia(){
   const resto=lim-tot.k,pct=lim?tot.k/lim*100:0,col=resto<0?"var(--ro)":"var(--pr)";
   const metas=[["PROTEINAS","p",lim*.3/4,"var(--ph)"],["CARBOHIDRATOS","c",lim*.4/4,"var(--am)"],["GRASAS","g",lim*.3/9,"var(--co)"]];
   const e=dias[fecha]?.[slot],pv=pend[slot],nPend=Object.keys(pend).length;
-  let h=`<div class="card"><div class="r"><div>${anillo(pct,col)}</div><div><div class="mi">Hoy llevas</div><div><span class="t" style="font-size:42px">${Math.round(tot.k)}</span><span class="mu" style="font-size:14px"> / ${lim} kcal</span></div>
+  let h=`<div class="card" style="padding:14px 18px">${vPlanCard()}</div><div class="card"><div class="r"><div>${anillo(pct,col)}</div><div><div class="mi">Hoy llevas</div><div><span class="t" style="font-size:42px">${Math.round(tot.k)}</span><span class="mu" style="font-size:14px"> / ${lim} kcal</span></div>
   <span class="pill" style="color:${col};background:${resto<0?"#fbe4e4":"#dcefe7"}">${resto>=0?`Te quedan ${Math.round(resto)} kcal`:`Te has pasado ${Math.round(-resto)} kcal`}</span></div></div>
   <div class="g" style="grid-template-columns:repeat(3,1fr);margin-top:14px">${metas.map(([n,k,m,c])=>`<div class="tile" style="padding:10px 10px"><div class="mi" style="color:${c};font-size:9px">${n}</div><div><b style="font-size:20px">${Math.round(tot[k])}</b><span class="mu"> / ${Math.round(m)} g</span></div><div class="bar m" style="margin-top:6px"><i style="width:${m?Math.min(tot[k]/m,1)*100:0}%;background:${c}"></i></div></div>`).join("")}</div></div>`;
   h+=`<div class="card"><div class="t" style="font-size:18px">Escanear comida</div><div class="mu" style="margin-bottom:8px">Elige la comida, sube su foto y la IA estima calorías y macros</div>
@@ -248,7 +250,7 @@ function vDia(){
     <div style="margin-top:3px"><span class="pill" style="font-size:11px;color:var(--ph);background:#e3f3ec">P ${esc(p.proteinas_g??0)} g</span> <span class="pill" style="font-size:11px;color:var(--am);background:#faefdc">C ${esc(p.carbohidratos_g??0)} g</span> <span class="pill" style="font-size:11px;color:var(--co);background:#fbe9de">G ${esc(p.grasas_g??0)} g</span></div></div>
     <div style="text-align:right"><div class="t" style="font-size:22px">${esc(p.calorias??0)}</div><div class="mi">kcal</div></div></div>`)}
   h+=`<div class="mu" style="margin-top:12px">Las calorías son estimaciones de la IA, no un consejo médico.</div></div>`;
-  h+=`<div class="card">${vPlanCard()}</div>`;
+  
   if(perfil&&!wz)h+=`<div class="card">${vMenu()}</div>`;
   return h;
 }
