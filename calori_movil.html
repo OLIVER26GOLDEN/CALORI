@@ -4,6 +4,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff"><meta name="apple-mobile-web-app-capable" content="yes">
 <title>Calori</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+#auth-overlay{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;background:#f4f6f4}
+#auth-overlay.visible{display:flex}
+.auth-card{width:100%;max-width:360px;background:#fff;border-radius:16px;padding:24px;box-shadow:0 8px 30px rgba(0,0,0,.12);font-family:system-ui,sans-serif}
+.auth-card h2{margin:0 0 4px;font-size:22px}
+.auth-card p{margin:0 0 16px;color:#666;font-size:14px}
+.auth-card input{width:100%;box-sizing:border-box;padding:12px;margin-bottom:10px;border:1px solid #ccc;border-radius:10px;font-size:16px}
+.auth-card .principal{width:100%;padding:12px;border:0;border-radius:10px;background:#2e9d5b;color:#fff;font-size:16px;font-weight:600;cursor:pointer}
+.auth-card .principal:disabled{opacity:.6}
+.auth-card .cambiar{background:none;border:0;color:#2e9d5b;margin-top:12px;cursor:pointer;font-size:14px;width:100%}
+#auth-msg{min-height:20px;margin:6px 0 10px;font-size:14px;color:#c0392b}
+#auth-msg.ok{color:#2e7d32}
+</style>
 <style>
 :root{--bg:#fff;--s0:#f1f5f9;--s2:#f8fafc;--s3:#eef2f7;--s4:#e2e8f0;--bd:#e2e8f0;--tx:#0f172a;--mu:#64748b;--pr:#047857;--pc:#10b981;--ph:#059669;--am:#d97706;--co:#ea580c;--ro:#dc2626}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -42,6 +56,17 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-conte
 nav button{flex:1;max-width:140px;height:60px;border:0;border-radius:0;background:none;color:var(--mu);font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 2px}
 nav button span{font-size:20px;line-height:1}nav button.on{color:var(--pr)}
 </style></head><body>
+<div id="auth-overlay">
+  <div class="auth-card">
+    <h2 id="auth-titulo">Inicia sesión</h2>
+    <p>Entra para guardar tu progreso.</p>
+    <input id="auth-email" type="email" placeholder="Correo electrónico" autocomplete="email">
+    <input id="auth-pass" type="password" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="current-password">
+    <div id="auth-msg"></div>
+    <button class="principal" id="auth-btn" onclick="enviarAuth()">Entrar</button>
+    <button class="cambiar" id="auth-cambiar" onclick="cambiarModo()">¿No tienes cuenta? Regístrate</button>
+  </div>
+</div>
 <main id="a"></main>
 <nav id="nav"></nav>
 <input id="cam" type="file" accept="image/*" capture="environment" class="hide">
@@ -272,7 +297,8 @@ function vPerfil(){
   <div class="card"><div class="t" style="font-size:18px;margin-bottom:8px">Tus datos</div>${perfil?`<div class="mu" style="font-size:14px;line-height:1.7">${perfil.sexo} · ${perfil.edad} años · ${perfil.altura} cm · ${perfil.peso} kg<br>${esc(perfil.actividad)}<br>Objetivo: ${perfil.meta}${perfil.meta!=="Mantener"?` (${perfil.peso_objetivo} kg)`:""}</div><div style="white-space:pre-line;margin-top:10px">${esc(d)}</div>`:'<div class="mu">Aún no has rellenado tu plan.</div>'}
   <button class="p" style="width:100%;margin-top:12px" onclick="wizIni();tab='Inicio';render()">${perfil?"Cambiar mi plan paso a paso":"Crear mi plan"}</button></div>
   <div class="card"><div class="t" style="font-size:18px;margin-bottom:8px">Sugerencias</div><textarea id="sug" placeholder="Cuéntanos qué mejorarías…"></textarea>
-  <button style="width:100%;margin-top:8px" onclick="location.href='mailto:${EMAIL}?subject='+encodeURIComponent('[Calori] Sugerencia')+'&body='+encodeURIComponent($('#sug').value)">Enviar sugerencia por correo</button></div>`;
+  <button style="width:100%;margin-top:8px" onclick="location.href='mailto:${EMAIL}?subject='+encodeURIComponent('[Calori] Sugerencia')+'&body='+encodeURIComponent($('#sug').value)">Enviar sugerencia por correo</button></div>
+  <div class="card"><div class="mu" style="margin-bottom:8px">Sesión iniciada como ${esc(window.usuarioActual?window.usuarioActual.email:"")}</div><button style="width:100%" onclick="cerrarSesion()">Cerrar sesión</button></div>`;
 }
 function vCfg(){
   if(srv)return`<div class="card"><div class="t" style="font-size:18px">Configuración</div><div class="mu" style="margin-top:6px;font-size:14px">✓ Todo listo: el análisis de fotos funciona sin que tengas que poner ninguna clave. Tus datos se guardan solo en este móvil.</div></div>`;
@@ -299,4 +325,71 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)chequeaDia
 setInterval(chequeaDia,30000);
 limpiarFotos();
 fetch("/api/estado").then(r=>{if(r.ok)srv=true}).catch(()=>{}).finally(()=>{if(!perfil)wizIni();else render()});
-</script></body></html>
+</script>
+<script>
+const sb = supabase.createClient(
+  'https://icvlhmqmwzyrvoosaimb.supabase.co',
+  'sb_publishable_2e1gN56fuG4TraMZb-oUQA_bwLcF_hD'
+);
+
+let modoRegistro = false;
+
+function mensaje(texto, ok = false) {
+  const el = document.getElementById('auth-msg');
+  el.textContent = texto;
+  el.className = ok ? 'ok' : '';
+}
+
+function cambiarModo() {
+  modoRegistro = !modoRegistro;
+  document.getElementById('auth-titulo').textContent = modoRegistro ? 'Crea tu cuenta' : 'Inicia sesión';
+  document.getElementById('auth-btn').textContent = modoRegistro ? 'Registrarme' : 'Entrar';
+  document.getElementById('auth-cambiar').textContent = modoRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate';
+  document.getElementById('auth-pass').autocomplete = modoRegistro ? 'new-password' : 'current-password';
+  mensaje('');
+}
+
+function traducirError(err) {
+  const m = (err.message || '').toLowerCase();
+  if (m.includes('invalid login')) return 'Correo o contraseña incorrectos.';
+  if (m.includes('already registered')) return 'Ese correo ya tiene cuenta. Inicia sesión.';
+  if (m.includes('password')) return 'La contraseña debe tener al menos 6 caracteres.';
+  if (m.includes('rate limit')) return 'Demasiados intentos. Espera un poco.';
+  if (m.includes('email not confirmed')) return 'Confirma tu correo antes de entrar.';
+  return 'Error: ' + err.message;
+}
+
+async function enviarAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-pass').value;
+  if (!email || !password) { mensaje('Escribe tu correo y contraseña.'); return; }
+  const btn = document.getElementById('auth-btn');
+  btn.disabled = true; mensaje('');
+  try {
+    if (modoRegistro) {
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) throw error;
+      if (!data.session) mensaje('Te hemos enviado un correo para confirmar tu cuenta.', true);
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    }
+  } catch (err) {
+    mensaje(traducirError(err));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function cerrarSesion() { await sb.auth.signOut(); }
+
+function actualizarPantalla(session) {
+  window.usuarioActual = session ? session.user : null;
+  document.getElementById('auth-overlay').classList.toggle('visible', !session);
+  if (typeof render === 'function') render();
+}
+
+sb.auth.getSession().then(({ data }) => actualizarPantalla(data.session));
+sb.auth.onAuthStateChange((_evento, session) => actualizarPantalla(session));
+</script>
+</body></html>
