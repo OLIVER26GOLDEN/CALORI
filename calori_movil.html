@@ -152,7 +152,7 @@ async function analizar(lista){
   const f=fecha;busy=true;let ok=0;
   for(const s of lista){
     scanSlot=s;msg=`Analizando ${s.toLowerCase()}…`;render();
-    try{const r=await ia(PROMPT,pend[s].full.split(",")[1]);(dias[f]??={})[s]={foto:pend[s].thumb,resultado:r};delete pend[s];W("dias",dias);ok++}
+    try{const r=await ia(PROMPT,pend[s].full.split(",")[1]);(dias[f]??={})[s]={foto:pend[s].thumb,resultado:r};delete pend[s];W("dias",dias);guardarComida(f,s);ok++}
     catch(e){msg=`${s}: no se pudo analizar (${e.message})`;busy=false;scanSlot=null;return render()}
   }
   msg=ok?"Listo ✓":"";busy=false;scanSlot=null;render();
@@ -181,7 +181,7 @@ function wizFin(){
     const cambio=!prev.fecha_meta||["peso_objetivo","plazo","unidad","meta"].some(k=>prev[k]!==d[k]);
     if(cambio){const h=new Date(),m=new Date();m.setDate(m.getDate()+diasDe(d));d.fecha_inicio=h.toLocaleDateString("sv");d.fecha_meta=m.toLocaleDateString("sv")}
     else{d.fecha_inicio=prev.fecha_inicio;d.fecha_meta=prev.fecha_meta}}
-  perfil=d;W("perfil",d);wz=null;menu=null;render();
+  perfil=d;W("perfil",d);wz=null;menu=null;render();guardarPerfil();
 }
 async function plazoIA(){
   const f=x=>parseFloat(String(x).replace(",",".")),p={sexo:wv.sexo,meta:wv.meta,edad:f(wv.edad),peso:f(wv.peso),altura:f(wv.altura),actividad:wv.act,peso_objetivo:f(wv.obj),plazo:f(wv.plazo)||90,unidad:wv.unidad};
@@ -288,7 +288,7 @@ function vDia(){
   if(perfil&&!wz)h+=`<!--A--><div class="card">${vMenu()}</div>`;
   const P=h.split("<!--A-->");return tab==="Inicio"?P[0]+P[1]:tab==="Hoy"?P[2]:(P[3]||"");
 }
-function vaciar(){if(confirm("Se borrarán las comidas y fotos de este día.\n¿Continuar?")){delete dias[fecha];W("dias",dias);render()}}
+function vaciar(){if(confirm("Se borrarán las comidas y fotos de este día.\n¿Continuar?")){borrarDia(fecha);delete dias[fecha];W("dias",dias);render()}}
 function vPerfil(){
   let d="";
   if(perfil){const pl=planDe(perfil);d=!pl.kg?"Tu límite es de mantenimiento.":`Para pasar de ${perfil.peso} a ${perfil.peso_objetivo} kg en ${fmtPlazo(pl.dias)} te corresponden unas ${pl.objetivo} kcal al día (${pl.ritmo.toFixed(2)} kg/semana).`+(pl.dmin===null?"\nCon tu gasto actual no se puede bajar de peso de forma segura.":pl.limitado?`\nEse plazo es demasiado rápido: el mínimo es ${fmtPlazo(pl.dmin)}. Con este límite lo lograrías en unos ${fmtPlazo(pl.dreal)}.`:`\nPlazo sostenible recomendado: ${fmtPlazo(pl.drec)}.`)}
@@ -386,10 +386,98 @@ async function cerrarSesion() { await sb.auth.signOut(); }
 function actualizarPantalla(session) {
   window.usuarioActual = session ? session.user : null;
   document.getElementById('auth-overlay').classList.toggle('visible', !session);
-  if (typeof render === 'function') render();
+  if (!session) uidSync = null;
 }
 
-sb.auth.getSession().then(({ data }) => actualizarPantalla(data.session));
-sb.auth.onAuthStateChange((_evento, session) => actualizarPantalla(session));
+/* ---------- datos en Supabase ---------- */
+let uidSync = null;
+
+async function sincronizar(user) {
+  if (!user || uidSync === user.id) return;
+  uidSync = user.id;
+  try {
+    // si el móvil tenía datos de otra cuenta, se descartan
+    const owner = L("owner", null);
+    if (owner && owner !== user.id) {
+      perfil = null; dias = {}; avatar = "";
+      W("perfil", null); W("dias", {}); W("avatar", "");
+    }
+    W("owner", user.id);
+
+    const [rp, rc] = await Promise.all([
+      sb.from("perfiles").select("*").eq("id", user.id).maybeSingle(),
+      sb.from("comidas").select("fecha,tipo,resultado").eq("usuario_id", user.id).limit(5000)
+    ]);
+    if (rp.error) throw rp.error;
+    if (rc.error) throw rc.error;
+
+    // comidas: lo de la nube manda; se conservan las fotos locales
+    const enNube = new Set();
+    for (const r of rc.data) {
+      enNube.add(r.fecha + "|" + r.tipo);
+      const loc = dias[r.fecha] && dias[r.fecha][r.tipo];
+      const e = { resultado: r.resultado };
+      if (loc && loc.foto) e.foto = loc.foto;
+      (dias[r.fecha] = dias[r.fecha] || {})[r.tipo] = e;
+    }
+    // lo que solo estaba en el móvil (historial anterior) se sube
+    const subir = [];
+    for (const f in dias) for (const t of C) {
+      if (dias[f][t] && dias[f][t].resultado && !enNube.has(f + "|" + t))
+        subir.push({ usuario_id: user.id, fecha: f, tipo: t, resultado: dias[f][t].resultado });
+    }
+    if (subir.length) {
+      const { error } = await sb.from("comidas").upsert(subir, { onConflict: "usuario_id,fecha,tipo" });
+      if (error) throw error;
+    }
+
+    // perfil
+    if (rp.data) {
+      const { id, actualizado_en, ...p } = rp.data;
+      perfil = p;
+    } else if (perfil) {
+      await guardarPerfil();
+    }
+    W("perfil", perfil); W("dias", dias);
+    if (perfil) wz = null;
+  } catch (e) {
+    console.error(e);
+    uidSync = null;
+    msg = "No se pudo sincronizar con la nube: " + (e.message || e);
+  }
+  if (!perfil && !wz) wizIni(); else render();
+}
+
+async function guardarPerfil() {
+  const u = window.usuarioActual;
+  if (!u || !perfil) return;
+  const { error } = await sb.from("perfiles").upsert({ id: u.id, ...perfil, actualizado_en: new Date().toISOString() });
+  if (error) { console.error(error); msg = "No se pudo guardar tu plan en la nube: " + error.message; render(); }
+}
+
+async function guardarComida(f, s) {
+  const u = window.usuarioActual;
+  if (!u || !dias[f] || !dias[f][s]) return;
+  const { error } = await sb.from("comidas").upsert(
+    { usuario_id: u.id, fecha: f, tipo: s, resultado: dias[f][s].resultado },
+    { onConflict: "usuario_id,fecha,tipo" });
+  if (error) { console.error(error); msg = "No se pudo guardar en la nube: " + error.message; render(); }
+}
+
+async function borrarDia(f) {
+  const u = window.usuarioActual;
+  if (!u) return;
+  const { error } = await sb.from("comidas").delete().eq("usuario_id", u.id).eq("fecha", f);
+  if (error) console.error(error);
+}
+
+sb.auth.getSession().then(({ data }) => {
+  actualizarPantalla(data.session);
+  if (data.session) setTimeout(() => sincronizar(data.session.user), 0);
+});
+sb.auth.onAuthStateChange((_evento, session) => {
+  actualizarPantalla(session);
+  if (session) setTimeout(() => sincronizar(session.user), 0);
+});
 </script>
 </body></html>
