@@ -139,7 +139,7 @@ async function llamar(c,prompt,b64,max){
   const j=await http(base+"/chat/completions",{method:"POST",headers:c.key?{Authorization:"Bearer "+c.key,"Content-Type":"application/json"}:{"Content-Type":"application/json"},body:JSON.stringify({model:m,max_tokens:max,messages:[{role:"user",content}]})});
   return j.choices[0].message.content}
 async function ia(prompt,b64,max=1000){
-  if(srv){const r=await fetch("/api/ia",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,imagen:b64||"",max_tokens:max})});
+  if(srv){const{data:ses}=await sb.auth.getSession();const tk=ses&&ses.session?ses.session.access_token:"";const r=await fetch("/api/ia",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tk},body:JSON.stringify({prompt,imagen:b64||"",max_tokens:max})});
     const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);
     return JSON.parse(j.texto.trim().replace(/^```(?:json)?/,"").replace(/```$/,"").trim())}
   const cs=cfg.apis.filter(a=>a.key||a.prov==="Otra compatible con OpenAI"&&a.base);
