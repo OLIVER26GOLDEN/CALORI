@@ -60,7 +60,7 @@ const PROMPT=`Eres un nutricionista. Analiza la foto de comida y devuelve SOLO u
 Si hay varios platos o alimentos, un elemento por cada uno. Estima porciones de forma realista.
 Si la imagen no contiene comida, devuelve {"platos":[],"comentario":"No veo comida en la foto"}.`;
 const L=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
-const W=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{alert("Memoria llena: no se pudo guardar")}};
+const W=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{alert("Memoria llena: no se pudo guardar")}if(sesion&&(k==="perfil"||k==="dias"||k==="avatar")){try{localStorage.setItem("sucio","1")}catch{}progSync()}};
 const hoy=()=>new Date().toLocaleDateString("sv"),$=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num=x=>typeof x==="number"?x:parseFloat((String(x).match(/-?\d+(?:[.,]\d+)?/)||["0"])[0].replace(",","."))||0;
@@ -116,8 +116,10 @@ async function llamar(c,prompt,b64,max){
   const j=await http(base+"/chat/completions",{method:"POST",headers:c.key?{Authorization:"Bearer "+c.key,"Content-Type":"application/json"}:{"Content-Type":"application/json"},body:JSON.stringify({model:m,max_tokens:max,messages:[{role:"user",content}]})});
   return j.choices[0].message.content}
 async function ia(prompt,b64,max=1000){
-  if(srv){const r=await fetch("/api/ia",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,imagen:b64||"",max_tokens:max})});
-    const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);
+  if(srv){const r=await fetch("/api/ia",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(await token())},body:JSON.stringify({prompt,imagen:b64||"",max_tokens:max})});
+    const j=await r.json().catch(()=>({}));
+    if(r.status===401){salirLocal();authMsg="Tu sesión ha caducado. Vuelve a entrar.";render();throw new Error("Sesión caducada")}
+    if(!r.ok)throw new Error(j.error||r.status);
     return JSON.parse(j.texto.trim().replace(/^```(?:json)?/,"").replace(/```$/,"").trim())}
   const cs=cfg.apis.filter(a=>a.key||a.prov==="Otra compatible con OpenAI"&&a.base);
   if(!cs.length)throw new Error("Falta la clave API. Añádela en Configuración.");
@@ -269,7 +271,7 @@ function vaciar(){if(confirm("Se borrarán las comidas y fotos de este día.\n¿
 function vPerfil(){
   let d="";
   if(perfil){const pl=planDe(perfil);d=!pl.kg?"Tu límite es de mantenimiento.":`Para pasar de ${perfil.peso} a ${perfil.peso_objetivo} kg en ${fmtPlazo(pl.dias)} te corresponden unas ${pl.objetivo} kcal al día (${pl.ritmo.toFixed(2)} kg/semana).`+(pl.dmin===null?"\nCon tu gasto actual no se puede bajar de peso de forma segura.":pl.limitado?`\nEse plazo es demasiado rápido: el mínimo es ${fmtPlazo(pl.dmin)}. Con este límite lo lograrías en unos ${fmtPlazo(pl.dreal)}.`:`\nPlazo sostenible recomendado: ${fmtPlazo(pl.drec)}.`)}
-  return`<div class="card"><div class="r" style="gap:14px">${avatar?`<img class="av" style="width:72px;height:72px;border-radius:36px" src="${avatar}">`:`<div class="av" style="width:72px;height:72px;border-radius:36px;font-size:28px">👤</div>`}
+  return`${cuentaCard()}<div class="card"><div class="r" style="gap:14px">${avatar?`<img class="av" style="width:72px;height:72px;border-radius:36px" src="${avatar}">`:`<div class="av" style="width:72px;height:72px;border-radius:36px;font-size:28px">👤</div>`}
   <div class="g"><button class="sm" onclick="$('#avf').click()">Elegir foto de perfil</button>${avatar?`<button class="sm" onclick="avatar='';W('avatar','');render()">Quitar foto</button>`:""}</div></div></div>
   <div class="card"><div class="t" style="font-size:18px;margin-bottom:8px">Tus datos</div>${perfil?`<div class="mu" style="font-size:14px;line-height:1.7">${perfil.sexo} · ${perfil.edad} años · ${perfil.altura} cm · ${perfil.peso} kg<br>${esc(perfil.actividad)}<br>Objetivo: ${perfil.meta}${perfil.meta!=="Mantener"?` (${perfil.peso_objetivo} kg)`:""}</div><div style="white-space:pre-line;margin-top:10px">${esc(d)}</div>`:'<div class="mu">Aún no has rellenado tu plan.</div>'}
   <button class="p" style="width:100%;margin-top:12px" onclick="wizIni();tab='Inicio';render()">${perfil?"Cambiar mi plan paso a paso":"Crear mi plan"}</button></div>
@@ -287,11 +289,95 @@ function vCfg(){
 }
 const NAV=[["Inicio","🏠","Inicio"],["Hoy","🍽️","Comidas de hoy"],["Menú","✨","Comidas del día"],["Perfil","👤","Perfil"]];
 function render(){
-  const nv=$("#nav");nv.style.display=wz?"none":"flex";
+  const nv=$("#nav");if(srv&&!sesion){nv.style.display="none";$("#a").innerHTML=vLogin();return}
+  nv.style.display=wz?"none":"flex";
   nv.innerHTML=NAV.map(([t,i,l])=>`<button class="${t===tab?"on":""}" onclick="tab='${t}';msg='';scrollTo(0,0);render()"><span>${i}</span>${l}</button>`).join("");
   const y=scrollY;
   if(wz){const first=!perfil;$("#a").innerHTML=(first?`<div class="r" style="margin:6px 0 14px"><img src="${LOGO}" width="48" height="52" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div><div class="mu" style="margin-bottom:10px">Contesta unas preguntas para calcular tu plan.</div>`:"")+`<div class="card">${vWiz()}</div>`;scrollTo(0,first?0:y);return}
   $("#a").innerHTML=cabecera()+(tab==="Perfil"?vPerfil()+(srv?"":vCfg()):vDia());scrollTo(0,y);
+}
+/* Cuenta con Supabase Auth: iniciar y cerrar sesión (el plan y el historial viajan con la cuenta) */
+let sesion=L("sesion",null),cfgS=null,abrirPerfil=false,authModo="Iniciar sesión",authMsg="",authBusy=false,authEm="",authNm="",syncT=null;
+const ERR={invalid_credentials:"Correo o contraseña incorrectos",user_already_exists:"Ese correo ya tiene una cuenta. Inicia sesión.",email_exists:"Ese correo ya tiene una cuenta. Inicia sesión.",weak_password:"La contraseña es demasiado débil (mínimo 8 caracteres)",email_not_confirmed:"Confirma tu correo: te hemos enviado un enlace.",over_email_send_rate_limit:"Se han enviado demasiados correos. Prueba dentro de un rato.",over_request_rate_limit:"Demasiados intentos. Prueba más tarde.",validation_failed:"Escribe un correo válido",signup_disabled:"El registro está desactivado"};
+async function sb(ruta,{metodo,cuerpo,token:tk,extra}={}){
+  const hd={apikey:cfgS.key,"Content-Type":"application/json",...extra};
+  if(tk)hd.Authorization="Bearer "+tk;
+  const r=await fetch(cfgS.url+ruta,{method:metodo||(cuerpo?"POST":"GET"),headers:hd,body:cuerpo?JSON.stringify(cuerpo):undefined});
+  const j=r.status===204?{}:await r.json().catch(()=>({}));
+  if(!r.ok)throw Object.assign(new Error(ERR[j.error_code]||j.msg||j.message||"Error "+r.status),{status:r.status});
+  return j;
+}
+function guardarSesion(j){
+  sesion={token:j.access_token,refresh:j.refresh_token,exp:j.expires_at||Math.floor(Date.now()/1000)+(j.expires_in||3600),id:j.user.id,email:j.user.email,nombre:j.user.user_metadata?.nombre||""};
+  localStorage.setItem("sesion",JSON.stringify(sesion));
+}
+async function token(){
+  if(!sesion)return null;
+  if(sesion.exp-60<Date.now()/1000){
+    try{guardarSesion(await sb("/auth/v1/token?grant_type=refresh_token",{cuerpo:{refresh_token:sesion.refresh}}))}
+    catch(e){if(e.status>=400&&e.status<500){salirLocal();authMsg="Tu sesión ha caducado. Vuelve a entrar.";render();return null}}
+  }
+  return sesion?sesion.token:null;
+}
+const paquete=()=>({perfil,avatar,dias:JSON.parse(JSON.stringify(dias,(k,v)=>k==="foto"?undefined:v))});
+function progSync(){clearTimeout(syncT);syncT=setTimeout(subir,1500)}
+async function subir(estricto){
+  if(!sesion||!srv)return;
+  try{const t=await token();if(!t)throw new Error("sin sesión");
+    await sb("/rest/v1/calori_datos?on_conflict=user_id",{cuerpo:{user_id:sesion.id,datos:paquete(),actualizado:new Date().toISOString()},token:t,extra:{Prefer:"resolution=merge-duplicates,return=minimal"}});
+    localStorage.removeItem("sucio")}catch(e){if(estricto)throw e}
+}
+async function bajar(){
+  const t=await token();if(!t)throw new Error("sin sesión");
+  const j=await sb("/rest/v1/calori_datos?select=datos&user_id=eq."+sesion.id,{token:t});
+  return(j[0]&&j[0].datos)||{};
+}
+function aplicar(d){
+  const sd=d.dias||{};for(const f in sd)for(const s in sd[f])if(dias[f]?.[s]?.foto&&sd[f][s])sd[f][s].foto=dias[f][s].foto;
+  perfil=d.perfil||null;avatar=d.avatar||"";dias=sd;
+  try{localStorage.setItem("perfil",JSON.stringify(perfil));localStorage.setItem("avatar",JSON.stringify(avatar));localStorage.setItem("dias",JSON.stringify(dias))}catch{}
+}
+function salirLocal(){sesion=null;perfil=null;dias={};avatar="";pend={};wz=null;menu=null;tab="Inicio";["sesion","perfil","dias","avatar","sucio"].forEach(k=>localStorage.removeItem(k))}
+async function entrar(){
+  const reg=authModo==="Crear cuenta",pw=$("#pw").value,email=authEm.trim().toLowerCase();
+  authBusy=true;authMsg="";render();
+  try{
+    let j;
+    if(reg){
+      if(pw.length<8)throw new Error("La contraseña debe tener al menos 8 caracteres");
+      j=await sb("/auth/v1/signup",{cuerpo:{email,password:pw,data:{nombre:authNm.trim()}}});
+      if(!j.access_token){authBusy=false;authModo="Iniciar sesión";authMsg="✓ Cuenta creada. Revisa tu correo, confirma el enlace y luego inicia sesión.";return render()}
+    }else j=await sb("/auth/v1/token?grant_type=password",{cuerpo:{email,password:pw}});
+    guardarSesion(j);
+    const d=await bajar().catch(()=>({}));
+    if(d.perfil)aplicar(d);else if(perfil)subir();
+    authBusy=false;authEm=authNm="";
+    if(!perfil)return wizIni();
+    tab=abrirPerfil?"Perfil":"Inicio";abrirPerfil=false;render();
+  }catch(e){authBusy=false;authMsg=e.message;render()}
+}
+async function cerrarSesion(){
+  if(!confirm("¿Cerrar sesión? Tus datos quedan guardados en tu cuenta."))return;
+  clearTimeout(syncT);
+  try{await subir(true)}catch(e){if(!confirm("No se han podido guardar los últimos cambios (¿sin conexión?). Si cierras sesión ahora podrías perderlos.\n¿Cerrar sesión igualmente?"))return}
+  try{if(sesion)await sb("/auth/v1/logout",{metodo:"POST",token:sesion.token})}catch{}
+  salirLocal();authMsg="";authModo="Iniciar sesión";render();
+}
+function cuentaCard(){
+  return sesion?`<div class="card"><div class="r sb"><div style="min-width:0"><div class="t">${sesion.nombre?"Hola, "+esc(sesion.nombre):"Tu cuenta"}</div><div class="mu" style="overflow:hidden;text-overflow:ellipsis">${esc(sesion.email)}</div></div><button class="sm" onclick="cerrarSesion()">Cerrar sesión</button></div></div>`:"";
+}
+function vLogin(){
+  const reg=authModo==="Crear cuenta";
+  return`<div class="r" style="margin:6px 0 14px"><img src="${LOGO}" width="48" height="52" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div>
+  <div class="card"><div class="t" style="font-size:20px">${reg?"Crea tu cuenta":"Bienvenido de nuevo"}</div>
+  <div class="mu" style="margin:4px 0 12px">${reg?"Guarda tu plan y tus comidas y entra desde cualquier móvil.":"Entra para ver tu plan y tus comidas."}</div>
+  <div class="seg">${["Iniciar sesión","Crear cuenta"].map(m=>`<button class="${m===authModo?"on":""}" onclick="authModo='${m}';authMsg='';render()">${m}</button>`).join("")}</div>
+  <div class="g" style="margin-top:12px">
+  ${reg?`<input placeholder="Tu nombre (opcional)" value="${esc(authNm)}" oninput="authNm=this.value" autocomplete="name">`:""}
+  <input type="email" inputmode="email" placeholder="Correo electrónico" value="${esc(authEm)}" oninput="authEm=this.value" autocomplete="email">
+  <input id="pw" type="password" placeholder="Contraseña${reg?" (mínimo 8 caracteres)":""}" autocomplete="${reg?"new-password":"current-password"}" onkeydown="if(event.key==='Enter')entrar()"></div>
+  <div class="mu" style="color:${authMsg.startsWith("✓")?"var(--pr)":"var(--ro)"};margin:8px 0">${esc(authMsg)}</div>
+  <button class="p" style="width:100%" ${authBusy?"disabled":""} onclick="entrar()">${authBusy?"Un momento…":reg?"Crear cuenta":"Iniciar sesión"}</button></div>`;
 }
 /* App instalable (PWA) */
 let instEv=null;
@@ -311,8 +397,19 @@ function bannerInstalar(){
 let diaApp=hoy();
 function limpiarFotos(){let c=false;const h=hoy();for(const f in dias)if(f<h)for(const s of C)if(dias[f]?.[s]?.foto){delete dias[f][s].foto;c=true}if(c)W("dias",dias)}
 function chequeaDia(){if(hoy()!==diaApp){diaApp=hoy();fecha=diaApp;pend={};slot=C[0];msg="¡Nuevo día! Ya puedes hacer tus fotos.";limpiarFotos();render()}}
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)chequeaDia()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden)subir();else chequeaDia()});
 setInterval(chequeaDia,30000);
 limpiarFotos();
-fetch("/api/estado").then(r=>{if(r.ok)srv=true}).catch(()=>{}).finally(()=>{if(!perfil)wizIni();else render()});
+abrirPerfil=enApp()&&!L("appAbierta",false);if(enApp())W("appAbierta",true);
+async function arrancar(){
+  if(srv&&!sesion)return render();
+  if(srv&&sesion){try{
+    if(localStorage.getItem("sucio"))await subir();
+    else{const d=await bajar();if(d.perfil)aplicar(d);else if(perfil)subir()}
+  }catch{}}
+  if(!perfil)return wizIni();
+  if(abrirPerfil){tab="Perfil";abrirPerfil=false}
+  render();
+}
+fetch("/api/config").then(async r=>{if(r.ok){cfgS=await r.json();srv=true}}).catch(()=>{}).finally(arrancar);
 </script></body></html>
