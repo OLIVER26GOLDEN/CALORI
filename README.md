@@ -25,7 +25,7 @@
 - 🛡️ **Ritmo seguro:** nunca propone bajar de un mínimo de kcal ni perder más del 1 % del peso por semana; avisa si el plazo elegido es demasiado rápido.
 - 🤖 **IA como asesor:** recomienda un plazo realista y sugiere comidas del día ajustadas a tus calorías, preferencias y alergias.
 - 📊 **Seguimiento diario:** anillo de progreso, reparto por comidas (desayuno, aperitivo, comida, merienda, cena), macros frente a objetivo y racha de días.
-- 📱 **Mobile-first:** una sola página que se puede añadir a la pantalla de inicio como si fuera una app.
+- 📱 **PWA instalable:** se instala desde el navegador (Android e iOS) con su icono, a pantalla completa y sin pasar por ninguna tienda.
 
 ## 🏗️ Arquitectura
 
@@ -85,6 +85,9 @@ Comprobación rápida: `https://tu-app.onrender.com/api/estado` → `{"ok": true
 ```
 ├── servidor_movil.py     # Backend: sirve la web y hace de proxy seguro hacia la IA
 ├── calori_movil.html     # App completa (UI, lógica del plan, seguimiento)
+├── manifest.webmanifest  # Datos de la PWA (nombre, iconos, pantalla completa)
+├── sw.js                 # Service worker (instalación y copia de la interfaz)
+├── icon-192.png · icon-512.png · apple-touch-icon.png
 ├── requirements.txt
 ├── Procfile
 └── .gitignore
@@ -94,7 +97,7 @@ Comprobación rápida: `https://tu-app.onrender.com/api/estado` → `{"ok": true
 
 - [ ] Cuentas de usuario y base de datos para sincronizar el historial entre dispositivos.
 - [ ] Tests automáticos de la lógica del plan y del servidor.
-- [ ] Modo offline (service worker) e instalación como PWA completa.
+- [ ] Modo offline completo (hoy el service worker solo guarda la interfaz).
 - [ ] Gráficas de evolución del peso y de las calorías semanales.
 
 ## ⚠️ Aviso
@@ -105,4 +108,4 @@ Las calorías y macros son **estimaciones de una IA** y no sustituyen el consejo
 
 **Oliver Lugo Jiménez** — [@OLIVER26GOLDEN](https://github.com/OLIVER26GOLDEN)
 
-Proyecto nacido como una app de escritorio en Python y llevado a la web móvil, con backend propio y despliegue en producción. 
+Proyecto nacido como una app de escritorio en Python y llevado a la web móvil, con backend propio y despliegue en producción.

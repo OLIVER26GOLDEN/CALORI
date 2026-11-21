@@ -3,21 +3,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Calori"><meta name="apple-mobile-web-app-title" content="Calori">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="icon" href="/icon-192.png">
 <title>Calori</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-#auth-overlay{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;background:#f4f6f4}
-#auth-overlay.visible{display:flex}
-.auth-card{width:100%;max-width:360px;background:#fff;border-radius:16px;padding:24px;box-shadow:0 8px 30px rgba(0,0,0,.12);font-family:system-ui,sans-serif}
-.auth-card h2{margin:0 0 4px;font-size:22px}
-.auth-card p{margin:0 0 16px;color:#666;font-size:14px}
-.auth-card input{width:100%;box-sizing:border-box;padding:12px;margin-bottom:10px;border:1px solid #ccc;border-radius:10px;font-size:16px}
-.auth-card .principal{width:100%;padding:12px;border:0;border-radius:10px;background:#2e9d5b;color:#fff;font-size:16px;font-weight:600;cursor:pointer}
-.auth-card .principal:disabled{opacity:.6}
-.auth-card .cambiar{background:none;border:0;color:#2e9d5b;margin-top:12px;cursor:pointer;font-size:14px;width:100%}
-#auth-msg{min-height:20px;margin:6px 0 10px;font-size:14px;color:#c0392b}
-#auth-msg.ok{color:#2e7d32}
-</style>
 <style>
 :root{--bg:#fff;--s0:#f1f5f9;--s2:#f8fafc;--s3:#eef2f7;--s4:#e2e8f0;--bd:#e2e8f0;--tx:#0f172a;--mu:#64748b;--pr:#047857;--pc:#10b981;--ph:#059669;--am:#d97706;--co:#ea580c;--ro:#dc2626}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -56,17 +44,6 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-conte
 nav button{flex:1;max-width:140px;height:60px;border:0;border-radius:0;background:none;color:var(--mu);font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 2px}
 nav button span{font-size:20px;line-height:1}nav button.on{color:var(--pr)}
 </style></head><body>
-<div id="auth-overlay">
-  <div class="auth-card">
-    <h2 id="auth-titulo">Inicia sesión</h2>
-    <p>Entra para guardar tu progreso.</p>
-    <input id="auth-email" type="email" placeholder="Correo electrónico" autocomplete="email">
-    <input id="auth-pass" type="password" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="current-password">
-    <div id="auth-msg"></div>
-    <button class="principal" id="auth-btn" onclick="enviarAuth()">Entrar</button>
-    <button class="cambiar" id="auth-cambiar" onclick="cambiarModo()">¿No tienes cuenta? Regístrate</button>
-  </div>
-</div>
 <main id="a"></main>
 <nav id="nav"></nav>
 <input id="cam" type="file" accept="image/*" capture="environment" class="hide">
@@ -139,7 +116,7 @@ async function llamar(c,prompt,b64,max){
   const j=await http(base+"/chat/completions",{method:"POST",headers:c.key?{Authorization:"Bearer "+c.key,"Content-Type":"application/json"}:{"Content-Type":"application/json"},body:JSON.stringify({model:m,max_tokens:max,messages:[{role:"user",content}]})});
   return j.choices[0].message.content}
 async function ia(prompt,b64,max=1000){
-  if(srv){const{data:ses}=await sb.auth.getSession();const tk=ses&&ses.session?ses.session.access_token:"";const r=await fetch("/api/ia",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tk},body:JSON.stringify({prompt,imagen:b64||"",max_tokens:max})});
+  if(srv){const r=await fetch("/api/ia",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,imagen:b64||"",max_tokens:max})});
     const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);
     return JSON.parse(j.texto.trim().replace(/^```(?:json)?/,"").replace(/```$/,"").trim())}
   const cs=cfg.apis.filter(a=>a.key||a.prov==="Otra compatible con OpenAI"&&a.base);
@@ -152,7 +129,7 @@ async function analizar(lista){
   const f=fecha;busy=true;let ok=0;
   for(const s of lista){
     scanSlot=s;msg=`Analizando ${s.toLowerCase()}…`;render();
-    try{const r=await ia(PROMPT,pend[s].full.split(",")[1]);(dias[f]??={})[s]={foto:pend[s].thumb,resultado:r};delete pend[s];W("dias",dias);guardarComida(f,s);ok++}
+    try{const r=await ia(PROMPT,pend[s].full.split(",")[1]);(dias[f]??={})[s]={foto:pend[s].thumb,resultado:r};delete pend[s];W("dias",dias);ok++}
     catch(e){msg=`${s}: no se pudo analizar (${e.message})`;busy=false;scanSlot=null;return render()}
   }
   msg=ok?"Listo ✓":"";busy=false;scanSlot=null;render();
@@ -181,7 +158,7 @@ function wizFin(){
     const cambio=!prev.fecha_meta||["peso_objetivo","plazo","unidad","meta"].some(k=>prev[k]!==d[k]);
     if(cambio){const h=new Date(),m=new Date();m.setDate(m.getDate()+diasDe(d));d.fecha_inicio=h.toLocaleDateString("sv");d.fecha_meta=m.toLocaleDateString("sv")}
     else{d.fecha_inicio=prev.fecha_inicio;d.fecha_meta=prev.fecha_meta}}
-  perfil=d;W("perfil",d);wz=null;menu=null;render();guardarPerfil();
+  perfil=d;W("perfil",d);wz=null;menu=null;render();
 }
 async function plazoIA(){
   const f=x=>parseFloat(String(x).replace(",",".")),p={sexo:wv.sexo,meta:wv.meta,edad:f(wv.edad),peso:f(wv.peso),altura:f(wv.altura),actividad:wv.act,peso_objetivo:f(wv.obj),plazo:f(wv.plazo)||90,unidad:wv.unidad};
@@ -226,7 +203,7 @@ function cabecera(){
   else{ot="Sin objetivo";oc="var(--mu)";os="Responde las preguntas de «Tu plan» para ver cuántos días te quedan."}
   return`<div class="r sb" style="margin:6px 0 14px"><div class="r"><img src="${LOGO}" width="48" height="52" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div>
   <div onclick="tab='Perfil';render()">${avatar?`<img class="av" src="${avatar}">`:`<div class="av">${perfil?"👤":"?"}</div>`}</div></div>
-  ${tab==="Inicio"?`<div class="card" style="padding:14px 18px"><div class="r" style="align-items:flex-start;gap:24px"><div><div class="mi">Racha</div><span class="t" style="font-size:30px;color:var(--am)">${a}</span><span class="mu"> ${a===1?"día":"días"}</span><div class="mu">${ok?`Hoy ya registrado · mejor: ${m}`:a?`Registra una comida hoy · mejor: ${m}`:"Registra una comida hoy para empezar"}</div></div>
+  ${tab==="Inicio"?bannerInstalar():""}${tab==="Inicio"?`<div class="card" style="padding:14px 18px"><div class="r" style="align-items:flex-start;gap:24px"><div><div class="mi">Racha</div><span class="t" style="font-size:30px;color:var(--am)">${a}</span><span class="mu"> ${a===1?"día":"días"}</span><div class="mu">${ok?`Hoy ya registrado · mejor: ${m}`:a?`Registra una comida hoy · mejor: ${m}`:"Registra una comida hoy para empezar"}</div></div>
   <div style="flex:1"><div class="r sb"><span class="mi">Objetivo</span><b style="color:${oc};font-size:14px">${ot}</b></div><div class="bar" style="margin:8px 0 6px"><i style="width:${(e?e.fr:0)*100}%"></i></div><div class="mu">${os}</div></div></div></div>`:""}
   `;
 }
@@ -275,7 +252,6 @@ function vDia(){
   <div class="g" style="grid-template-columns:1fr 1fr;margin-top:12px"><button onclick="$('#gal').click()">Elegir foto</button><button onclick="$('#cam').click()">Hacer foto</button></div>
   <button class="p" style="width:100%;margin-top:8px" ${busy||!pv?"disabled":""} onclick="analizar([slot])">Analizar comida</button>
   <button class="p" style="width:100%;margin-top:8px" ${busy||!nPend?"disabled":""} onclick="analizar(C.filter(s=>pend[s]))">Analizar todas${nPend>1?` (${nPend})`:""}</button>
-  <button style="width:100%;margin-top:8px" ${busy||(!pv&&!e)?"disabled":""} onclick="vaciarFoto()">Vaciar foto</button>
   <div class="mu" style="margin-top:8px">${esc(msg)}</div></div>`;
   h+=`<!--A--><div class="card"><div class="r sb"><div class="r"><span class="t" style="font-size:18px">Comidas de ${fecha===hoy()?"hoy":fecha}</span><span class="pill" style="background:#dcefe7;color:var(--pr)">${np} plato${np!==1?"s":""}</span></div></div>
   <div class="r" style="margin:8px 0 0"><input type="date" value="${fecha}" onchange="fecha=this.value||hoy();render()" style="flex:1"><button class="sm" onclick="vaciar()">Vaciar día</button></div>`;
@@ -289,15 +265,7 @@ function vDia(){
   if(perfil&&!wz)h+=`<!--A--><div class="card">${vMenu()}</div>`;
   const P=h.split("<!--A-->");return tab==="Inicio"?P[0]+P[1]:tab==="Hoy"?P[2]:(P[3]||"");
 }
-function vaciarFoto(){
-  const f=fecha,t=slot,guardada=dias[f]?.[t];
-  if(!pend[t]&&!guardada)return;
-  if(!pend[t]&&guardada&&!confirm("Se borrarán la foto y el análisis de "+t+".\nLas demás comidas no se tocan.\n¿Continuar?"))return;
-  delete pend[t];
-  if(guardada){delete dias[f][t];if(!Object.keys(dias[f]).length)delete dias[f];borrarComida(f,t);W("dias",dias)}
-  msg="";render();
-}
-function vaciar(){if(confirm("Se borrarán las comidas y fotos de este día.\n¿Continuar?")){borrarDia(fecha);delete dias[fecha];W("dias",dias);render()}}
+function vaciar(){if(confirm("Se borrarán las comidas y fotos de este día.\n¿Continuar?")){delete dias[fecha];W("dias",dias);render()}}
 function vPerfil(){
   let d="";
   if(perfil){const pl=planDe(perfil);d=!pl.kg?"Tu límite es de mantenimiento.":`Para pasar de ${perfil.peso} a ${perfil.peso_objetivo} kg en ${fmtPlazo(pl.dias)} te corresponden unas ${pl.objetivo} kcal al día (${pl.ritmo.toFixed(2)} kg/semana).`+(pl.dmin===null?"\nCon tu gasto actual no se puede bajar de peso de forma segura.":pl.limitado?`\nEse plazo es demasiado rápido: el mínimo es ${fmtPlazo(pl.dmin)}. Con este límite lo lograrías en unos ${fmtPlazo(pl.dreal)}.`:`\nPlazo sostenible recomendado: ${fmtPlazo(pl.drec)}.`)}
@@ -306,8 +274,7 @@ function vPerfil(){
   <div class="card"><div class="t" style="font-size:18px;margin-bottom:8px">Tus datos</div>${perfil?`<div class="mu" style="font-size:14px;line-height:1.7">${perfil.sexo} · ${perfil.edad} años · ${perfil.altura} cm · ${perfil.peso} kg<br>${esc(perfil.actividad)}<br>Objetivo: ${perfil.meta}${perfil.meta!=="Mantener"?` (${perfil.peso_objetivo} kg)`:""}</div><div style="white-space:pre-line;margin-top:10px">${esc(d)}</div>`:'<div class="mu">Aún no has rellenado tu plan.</div>'}
   <button class="p" style="width:100%;margin-top:12px" onclick="wizIni();tab='Inicio';render()">${perfil?"Cambiar mi plan paso a paso":"Crear mi plan"}</button></div>
   <div class="card"><div class="t" style="font-size:18px;margin-bottom:8px">Sugerencias</div><textarea id="sug" placeholder="Cuéntanos qué mejorarías…"></textarea>
-  <button style="width:100%;margin-top:8px" onclick="location.href='mailto:${EMAIL}?subject='+encodeURIComponent('[Calori] Sugerencia')+'&body='+encodeURIComponent($('#sug').value)">Enviar sugerencia por correo</button></div>
-  <div class="card"><div class="mu" style="margin-bottom:8px">Sesión iniciada como ${esc(window.usuarioActual?window.usuarioActual.email:"")}</div><button style="width:100%" onclick="cerrarSesion()">Cerrar sesión</button></div>`;
+  <button style="width:100%;margin-top:8px" onclick="location.href='mailto:${EMAIL}?subject='+encodeURIComponent('[Calori] Sugerencia')+'&body='+encodeURIComponent($('#sug').value)">Enviar sugerencia por correo</button></div>`;
 }
 function vCfg(){
   if(srv)return`<div class="card"><div class="t" style="font-size:18px">Configuración</div><div class="mu" style="margin-top:6px;font-size:14px">✓ Todo listo: el análisis de fotos funciona sin que tengas que poner ninguna clave. Tus datos se guardan solo en este móvil.</div></div>`;
@@ -326,6 +293,20 @@ function render(){
   if(wz){const first=!perfil;$("#a").innerHTML=(first?`<div class="r" style="margin:6px 0 14px"><img src="${LOGO}" width="48" height="52" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div><div class="mu" style="margin-bottom:10px">Contesta unas preguntas para calcular tu plan.</div>`:"")+`<div class="card">${vWiz()}</div>`;scrollTo(0,first?0:y);return}
   $("#a").innerHTML=cabecera()+(tab==="Perfil"?vPerfil()+(srv?"":vCfg()):vDia());scrollTo(0,y);
 }
+/* App instalable (PWA) */
+let instEv=null;
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();instEv=e;render()});
+addEventListener("appinstalled",()=>{instEv=null;render()});
+if("serviceWorker" in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register("/sw.js").catch(()=>{});
+const enApp=()=>(typeof matchMedia==="function"&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;
+async function instalar(){if(!instEv)return;instEv.prompt();try{await instEv.userChoice}catch{}instEv=null;render()}
+function bannerInstalar(){
+  if(enApp()||L("instNo",false))return"";
+  const x=`<button style="background:none;border:0;color:var(--mu);height:30px;padding:0 6px" onclick="W('instNo',true);render()">✕</button>`;
+  if(instEv)return`<div class="card" style="padding:12px 14px"><div class="r sb"><div><b>Instala Calori</b><div class="mu">Ábrela como una app, sin el navegador</div></div><div class="r"><button class="p sm" onclick="instalar()">Instalar</button>${x}</div></div></div>`;
+  if(/iphone|ipad|ipod/i.test(navigator.userAgent))return`<div class="card" style="padding:12px 14px"><div class="r sb"><div class="mu" style="font-size:13px">Para instalarla: pulsa <b>Compartir</b> ⎋ y luego <b>Añadir a pantalla de inicio</b>.</div>${x}</div></div>`;
+  return"";
+}
 /* Nuevo día: pantalla en blanco para hacer fotos nuevas; se borran las fotos de días anteriores (se conservan las calorías y la racha) */
 let diaApp=hoy();
 function limpiarFotos(){let c=false;const h=hoy();for(const f in dias)if(f<h)for(const s of C)if(dias[f]?.[s]?.foto){delete dias[f][s].foto;c=true}if(c)W("dias",dias)}
@@ -334,166 +315,4 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)chequeaDia
 setInterval(chequeaDia,30000);
 limpiarFotos();
 fetch("/api/estado").then(r=>{if(r.ok)srv=true}).catch(()=>{}).finally(()=>{if(!perfil)wizIni();else render()});
-</script>
-<script>
-const sb = supabase.createClient(
-  'https://icvlhmqmwzyrvoosaimb.supabase.co',
-  'sb_publishable_2e1gN56fuG4TraMZb-oUQA_bwLcF_hD'
-);
-
-let modoRegistro = false;
-
-function mensaje(texto, ok = false) {
-  const el = document.getElementById('auth-msg');
-  el.textContent = texto;
-  el.className = ok ? 'ok' : '';
-}
-
-function cambiarModo() {
-  modoRegistro = !modoRegistro;
-  document.getElementById('auth-titulo').textContent = modoRegistro ? 'Crea tu cuenta' : 'Inicia sesión';
-  document.getElementById('auth-btn').textContent = modoRegistro ? 'Registrarme' : 'Entrar';
-  document.getElementById('auth-cambiar').textContent = modoRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate';
-  document.getElementById('auth-pass').autocomplete = modoRegistro ? 'new-password' : 'current-password';
-  mensaje('');
-}
-
-function traducirError(err) {
-  const m = (err.message || '').toLowerCase();
-  if (m.includes('invalid login')) return 'Correo o contraseña incorrectos.';
-  if (m.includes('already registered')) return 'Ese correo ya tiene cuenta. Inicia sesión.';
-  if (m.includes('password')) return 'La contraseña debe tener al menos 6 caracteres.';
-  if (m.includes('rate limit')) return 'Demasiados intentos. Espera un poco.';
-  if (m.includes('email not confirmed')) return 'Confirma tu correo antes de entrar.';
-  return 'Error: ' + err.message;
-}
-
-async function enviarAuth() {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-pass').value;
-  if (!email || !password) { mensaje('Escribe tu correo y contraseña.'); return; }
-  const btn = document.getElementById('auth-btn');
-  btn.disabled = true; mensaje('');
-  try {
-    if (modoRegistro) {
-      const { data, error } = await sb.auth.signUp({ email, password });
-      if (error) throw error;
-      if (!data.session) mensaje('Te hemos enviado un correo para confirmar tu cuenta.', true);
-    } else {
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-    }
-  } catch (err) {
-    mensaje(traducirError(err));
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function cerrarSesion() { await sb.auth.signOut(); }
-
-function actualizarPantalla(session) {
-  window.usuarioActual = session ? session.user : null;
-  document.getElementById('auth-overlay').classList.toggle('visible', !session);
-  if (!session) uidSync = null;
-}
-
-/* ---------- datos en Supabase ---------- */
-let uidSync = null;
-
-async function sincronizar(user) {
-  if (!user || uidSync === user.id) return;
-  uidSync = user.id;
-  try {
-    // si el móvil tenía datos de otra cuenta, se descartan
-    const owner = L("owner", null);
-    if (owner && owner !== user.id) {
-      perfil = null; dias = {}; avatar = "";
-      W("perfil", null); W("dias", {}); W("avatar", "");
-    }
-    W("owner", user.id);
-
-    const [rp, rc] = await Promise.all([
-      sb.from("perfiles").select("*").eq("id", user.id).maybeSingle(),
-      sb.from("comidas").select("fecha,tipo,resultado").eq("usuario_id", user.id).limit(5000)
-    ]);
-    if (rp.error) throw rp.error;
-    if (rc.error) throw rc.error;
-
-    // comidas: lo de la nube manda; se conservan las fotos locales
-    const enNube = new Set();
-    for (const r of rc.data) {
-      enNube.add(r.fecha + "|" + r.tipo);
-      const loc = dias[r.fecha] && dias[r.fecha][r.tipo];
-      const e = { resultado: r.resultado };
-      if (loc && loc.foto) e.foto = loc.foto;
-      (dias[r.fecha] = dias[r.fecha] || {})[r.tipo] = e;
-    }
-    // lo que solo estaba en el móvil (historial anterior) se sube
-    const subir = [];
-    for (const f in dias) for (const t of C) {
-      if (dias[f][t] && dias[f][t].resultado && !enNube.has(f + "|" + t))
-        subir.push({ usuario_id: user.id, fecha: f, tipo: t, resultado: dias[f][t].resultado });
-    }
-    if (subir.length) {
-      const { error } = await sb.from("comidas").upsert(subir, { onConflict: "usuario_id,fecha,tipo" });
-      if (error) throw error;
-    }
-
-    // perfil
-    if (rp.data) {
-      const { id, actualizado_en, ...p } = rp.data;
-      perfil = p;
-    } else if (perfil) {
-      await guardarPerfil();
-    }
-    W("perfil", perfil); W("dias", dias);
-    if (perfil) wz = null;
-  } catch (e) {
-    console.error(e);
-    uidSync = null;
-    msg = "No se pudo sincronizar con la nube: " + (e.message || e);
-  }
-  if (!perfil && !wz) wizIni(); else render();
-}
-
-async function guardarPerfil() {
-  const u = window.usuarioActual;
-  if (!u || !perfil) return;
-  const { error } = await sb.from("perfiles").upsert({ id: u.id, ...perfil, actualizado_en: new Date().toISOString() });
-  if (error) { console.error(error); msg = "No se pudo guardar tu plan en la nube: " + error.message; render(); }
-}
-
-async function guardarComida(f, s) {
-  const u = window.usuarioActual;
-  if (!u || !dias[f] || !dias[f][s]) return;
-  const { error } = await sb.from("comidas").upsert(
-    { usuario_id: u.id, fecha: f, tipo: s, resultado: dias[f][s].resultado },
-    { onConflict: "usuario_id,fecha,tipo" });
-  if (error) { console.error(error); msg = "No se pudo guardar en la nube: " + error.message; render(); }
-}
-
-async function borrarComida(f, t) {
-  const u = window.usuarioActual;
-  if (!u) return;
-  const { error } = await sb.from("comidas").delete().eq("usuario_id", u.id).eq("fecha", f).eq("tipo", t);
-  if (error) console.error(error);
-}
-
-async function borrarDia(f) {
-  const u = window.usuarioActual;
-  if (!u) return;
-  const { error } = await sb.from("comidas").delete().eq("usuario_id", u.id).eq("fecha", f);
-  if (error) console.error(error);
-}
-
-sb.auth.getSession().then(({ data }) => {
-  actualizarPantalla(data.session);
-  if (data.session) setTimeout(() => sincronizar(data.session.user), 0);
-});
-sb.auth.onAuthStateChange((_evento, session) => {
-  actualizarPantalla(session);
-  if (session) setTimeout(() => sincronizar(session.user), 0);
-});
-</script>
-</body></html>
+</script></body></html>
