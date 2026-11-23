@@ -116,7 +116,9 @@ async function llamar(c,prompt,b64,max){
   const j=await http(base+"/chat/completions",{method:"POST",headers:c.key?{Authorization:"Bearer "+c.key,"Content-Type":"application/json"}:{"Content-Type":"application/json"},body:JSON.stringify({model:m,max_tokens:max,messages:[{role:"user",content}]})});
   return j.choices[0].message.content}
 async function ia(prompt,b64,max=1000){
-  if(srv){const r=await fetch("/api/ia",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(await token())},body:JSON.stringify({prompt,imagen:b64||"",max_tokens:max})});
+  if(srv){
+    const pedir=async()=>fetch("/api/ia",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(await token())},body:JSON.stringify({prompt,imagen:b64||"",max_tokens:max})});
+    let r;try{r=await pedir()}catch{await new Promise(x=>setTimeout(x,4000));try{r=await pedir()}catch{throw new Error("No hay conexión con el servidor. Comprueba tu internet; si la app llevaba un rato sin usarse, espera unos segundos a que despierte y vuelve a intentarlo.")}}
     const j=await r.json().catch(()=>({}));
     if(r.status===401){salirLocal();authMsg="Tu sesión ha caducado. Vuelve a entrar.";render();throw new Error("Sesión caducada")}
     if(!r.ok)throw new Error(j.error||r.status);
@@ -136,8 +138,20 @@ async function analizar(lista){
   }
   msg=ok?"Listo ✓":"";busy=false;scanSlot=null;render();
 }
-async function onFoto(file,s){const full=await img(file,1024,.85),thumb=await img(file,320,.6);pend[s]={full,thumb};msg="";render()}
-$("#cam").onchange=$("#gal").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)onFoto(f,slot)};
+async function onFoto(file,s,cam){const full=await img(file,1024,.85),thumb=await img(file,320,.6);pend[s]={full,thumb,file,cam:!!cam};msg="";render();if(cam)guardarGaleria(s,true)}
+$("#cam").onchange=$("#gal").onchange=e=>{const f=e.target.files[0],cam=e.target.id==="cam";e.target.value="";if(f)onFoto(f,slot,cam)};
+/* Guardar en la galería: Android lo guarda solo (álbum «Descargas»); iPhone exige un toque del usuario (menú Compartir > Guardar imagen) */
+const esIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+async function guardarGaleria(s,auto){
+  const f=pend[s]&&pend[s].file;if(!f||pend[s].guardada)return;
+  const nombre="calori-"+new Date().toLocaleString("sv").replace(/[: ]/g,"-")+".jpg",archivo=new File([f],nombre,{type:f.type||"image/jpeg"});
+  if(esIOS){
+    if(auto)return;
+    try{if(navigator.canShare&&navigator.canShare({files:[archivo]})){await navigator.share({files:[archivo]});pend[s].guardada=true;return render()}}catch(e){if(e.name==="AbortError")return}
+  }
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(archivo);a.download=nombre;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    pend[s].guardada=true;msg=esIOS?"Foto guardada en la app Archivos.":"Foto guardada en tu galería (álbum «Descargas»).";render()}catch{}
+}
 $("#avf").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(f){avatar=await img(f,200,.8);W("avatar",avatar);render()}};
 
 /* ---------- asistente "Tu plan" ---------- */
@@ -160,7 +174,7 @@ function wizFin(){
     const cambio=!prev.fecha_meta||["peso_objetivo","plazo","unidad","meta"].some(k=>prev[k]!==d[k]);
     if(cambio){const h=new Date(),m=new Date();m.setDate(m.getDate()+diasDe(d));d.fecha_inicio=h.toLocaleDateString("sv");d.fecha_meta=m.toLocaleDateString("sv")}
     else{d.fecha_inicio=prev.fecha_inicio;d.fecha_meta=prev.fecha_meta}}
-  perfil=d;W("perfil",d);wz=null;menu=null;render();
+  perfil=d;W("perfil",d);wz=null;menu=null;render();if(sesion)subir();
 }
 async function plazoIA(){
   const f=x=>parseFloat(String(x).replace(",",".")),p={sexo:wv.sexo,meta:wv.meta,edad:f(wv.edad),peso:f(wv.peso),altura:f(wv.altura),actividad:wv.act,peso_objetivo:f(wv.obj),plazo:f(wv.plazo)||90,unidad:wv.unidad};
@@ -205,7 +219,7 @@ function cabecera(){
   else{ot="Sin objetivo";oc="var(--mu)";os="Responde las preguntas de «Tu plan» para ver cuántos días te quedan."}
   return`<div class="r sb" style="margin:6px 0 14px"><div class="r"><img src="${LOGO}" width="48" height="52" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div>
   <div onclick="tab='Perfil';render()">${avatar?`<img class="av" src="${avatar}">`:`<div class="av">${perfil?"👤":"?"}</div>`}</div></div>
-  ${tab==="Inicio"?bannerInstalar():""}${tab==="Inicio"?`<div class="card" style="padding:14px 18px"><div class="r" style="align-items:flex-start;gap:24px"><div><div class="mi">Racha</div><span class="t" style="font-size:30px;color:var(--am)">${a}</span><span class="mu"> ${a===1?"día":"días"}</span><div class="mu">${ok?`Hoy ya registrado · mejor: ${m}`:a?`Registra una comida hoy · mejor: ${m}`:"Registra una comida hoy para empezar"}</div></div>
+  ${syncErr?`<div class="card" style="padding:12px 14px;border-color:var(--ro)"><div class="mu" style="color:var(--ro);font-size:13px">⚠️ ${esc(syncErr)}</div></div>`:""}${tab==="Inicio"?bannerInstalar():""}${tab==="Inicio"?`<div class="card" style="padding:14px 18px"><div class="r" style="align-items:flex-start;gap:24px"><div><div class="mi">Racha</div><span class="t" style="font-size:30px;color:var(--am)">${a}</span><span class="mu"> ${a===1?"día":"días"}</span><div class="mu">${ok?`Hoy ya registrado · mejor: ${m}`:a?`Registra una comida hoy · mejor: ${m}`:"Registra una comida hoy para empezar"}</div></div>
   <div style="flex:1"><div class="r sb"><span class="mi">Objetivo</span><b style="color:${oc};font-size:14px">${ot}</b></div><div class="bar" style="margin:8px 0 6px"><i style="width:${(e?e.fr:0)*100}%"></i></div><div class="mu">${os}</div></div></div></div>`:""}
   `;
 }
@@ -252,8 +266,11 @@ function vDia(){
   <div class="seg" style="margin-bottom:10px">${C.map(s=>`<button style="font-size:11px;${pend[s]?"color:var(--pr)":""}" class="${s===slot?"on":""}" onclick="slot='${s}';msg='';render()">${s}</button>`).join("")}</div>
   <div class="vis${busy&&scanSlot===slot?" scan":""}">${pv?`<img src="${pv.thumb}">`:e?.foto?`<img src="${e.foto}">`:"Elige una foto de tu plato"}</div>
   <div class="g" style="grid-template-columns:1fr 1fr;margin-top:12px"><button onclick="$('#gal').click()">Elegir foto</button><button onclick="$('#cam').click()">Hacer foto</button></div>
+  ${pv&&pv.cam?`<button class="sm" style="width:100%;margin-top:8px" ${pv.guardada?"disabled":""} onclick="guardarGaleria(slot)">${pv.guardada?"✓ Guardada en la galería":"📥 Guardar foto en la galería"}</button>`:""}
   <button class="p" style="width:100%;margin-top:8px" ${busy||!pv?"disabled":""} onclick="analizar([slot])">Analizar comida</button>
   <button class="p" style="width:100%;margin-top:8px" ${busy||!nPend?"disabled":""} onclick="analizar(C.filter(s=>pend[s]))">Analizar todas${nPend>1?` (${nPend})`:""}</button>
+  <div class="mu" style="margin-top:6px;font-size:11px">Para analizar todas las de hoy, pulsa «Vaciar hoy» y sube las fotos una por una.</div>
+  <button style="width:100%;margin-top:10px" ${busy?"disabled":""} onclick="vaciar()">${fecha===hoy()?"Vaciar hoy":"Vaciar este día"}</button>
   <div class="mu" style="margin-top:8px">${esc(msg)}</div></div>`;
   h+=`<!--A--><div class="card"><div class="r sb"><div class="r"><span class="t" style="font-size:18px">Comidas de ${fecha===hoy()?"hoy":fecha}</span><span class="pill" style="background:#dcefe7;color:var(--pr)">${np} plato${np!==1?"s":""}</span></div></div>
   <div class="r" style="margin:8px 0 0"><input type="date" value="${fecha}" onchange="fecha=this.value||hoy();render()" style="flex:1"><button class="sm" onclick="vaciar()">Vaciar día</button></div>`;
@@ -267,7 +284,7 @@ function vDia(){
   if(perfil&&!wz)h+=`<!--A--><div class="card">${vMenu()}</div>`;
   const P=h.split("<!--A-->");return tab==="Inicio"?P[0]+P[1]:tab==="Hoy"?P[2]:(P[3]||"");
 }
-function vaciar(){if(confirm("Se borrarán las comidas y fotos de este día.\n¿Continuar?")){delete dias[fecha];W("dias",dias);render()}}
+function vaciar(){if(confirm("Se borrarán las comidas y las fotos guardadas de "+(fecha===hoy()?"hoy":"este día")+".\n¿Continuar?")){delete dias[fecha];pend={};slot=C[0];msg="";W("dias",dias);render()}}
 function vPerfil(){
   let d="";
   if(perfil){const pl=planDe(perfil);d=!pl.kg?"Tu límite es de mantenimiento.":`Para pasar de ${perfil.peso} a ${perfil.peso_objetivo} kg en ${fmtPlazo(pl.dias)} te corresponden unas ${pl.objetivo} kcal al día (${pl.ritmo.toFixed(2)} kg/semana).`+(pl.dmin===null?"\nCon tu gasto actual no se puede bajar de peso de forma segura.":pl.limitado?`\nEse plazo es demasiado rápido: el mínimo es ${fmtPlazo(pl.dmin)}. Con este límite lo lograrías en unos ${fmtPlazo(pl.dreal)}.`:`\nPlazo sostenible recomendado: ${fmtPlazo(pl.drec)}.`)}
@@ -290,6 +307,7 @@ function vCfg(){
 const NAV=[["Inicio","🏠","Inicio"],["Hoy","🍽️","Comidas de hoy"],["Menú","✨","Comidas del día"],["Perfil","👤","Perfil"]];
 function render(){
   const nv=$("#nav");if(srv&&!sesion){nv.style.display="none";$("#a").innerHTML=vLogin();return}
+  if(srv&&sesion&&cargaErr&&!perfil){nv.style.display="none";$("#a").innerHTML=vCargaErr();return}
   nv.style.display=wz?"none":"flex";
   nv.innerHTML=NAV.map(([t,i,l])=>`<button class="${t===tab?"on":""}" onclick="tab='${t}';msg='';scrollTo(0,0);render()"><span>${i}</span>${l}</button>`).join("");
   const y=scrollY;
@@ -297,14 +315,14 @@ function render(){
   $("#a").innerHTML=cabecera()+(tab==="Perfil"?vPerfil()+(srv?"":vCfg()):vDia());scrollTo(0,y);
 }
 /* Cuenta con Supabase Auth: iniciar y cerrar sesión (el plan y el historial viajan con la cuenta) */
-let sesion=L("sesion",null),cfgS=null,abrirPerfil=false,authModo="Iniciar sesión",authMsg="",authBusy=false,authEm="",authNm="",syncT=null;
-const ERR={invalid_credentials:"Correo o contraseña incorrectos",user_already_exists:"Ese correo ya tiene una cuenta. Inicia sesión.",email_exists:"Ese correo ya tiene una cuenta. Inicia sesión.",weak_password:"La contraseña es demasiado débil (mínimo 8 caracteres)",email_not_confirmed:"Confirma tu correo: te hemos enviado un enlace.",over_email_send_rate_limit:"Se han enviado demasiados correos. Prueba dentro de un rato.",over_request_rate_limit:"Demasiados intentos. Prueba más tarde.",validation_failed:"Escribe un correo válido",signup_disabled:"El registro está desactivado"};
+let sesion=L("sesion",null),cfgS=null,abrirPerfil=false,authModo="Iniciar sesión",authMsg="",authBusy=false,authEm="",authNm="",syncT=null,syncErr="",cargaErr="";
+const ERR={invalid_credentials:"Correo o contraseña incorrectos",user_already_exists:"Ese correo ya tiene una cuenta. Inicia sesión.",email_exists:"Ese correo ya tiene una cuenta. Inicia sesión.",weak_password:"La contraseña es demasiado débil (mínimo 8 caracteres)",email_not_confirmed:"Confirma tu correo: te hemos enviado un enlace.",over_email_send_rate_limit:"Se han enviado demasiados correos. Prueba dentro de un rato.",over_request_rate_limit:"Demasiados intentos. Prueba más tarde.",validation_failed:"Escribe un correo válido",signup_disabled:"El registro está desactivado",PGRST205:"Falta crear la tabla calori_datos en Supabase: ejecuta supabase_calori.sql en el SQL Editor.","42P01":"Falta crear la tabla calori_datos en Supabase: ejecuta supabase_calori.sql en el SQL Editor.","42501":"Supabase no deja guardar tus datos: revisa las políticas de la tabla calori_datos."};
 async function sb(ruta,{metodo,cuerpo,token:tk,extra}={}){
   const hd={apikey:cfgS.key,"Content-Type":"application/json",...extra};
   if(tk)hd.Authorization="Bearer "+tk;
-  const r=await fetch(cfgS.url+ruta,{method:metodo||(cuerpo?"POST":"GET"),headers:hd,body:cuerpo?JSON.stringify(cuerpo):undefined});
+  let r;try{r=await fetch(cfgS.url+ruta,{method:metodo||(cuerpo?"POST":"GET"),headers:hd,body:cuerpo?JSON.stringify(cuerpo):undefined})}catch{throw new Error("No hay conexión. Comprueba tu internet e inténtalo de nuevo.")}
   const j=r.status===204?{}:await r.json().catch(()=>({}));
-  if(!r.ok)throw Object.assign(new Error(ERR[j.error_code]||j.msg||j.message||"Error "+r.status),{status:r.status});
+  if(!r.ok)throw Object.assign(new Error(ERR[j.error_code]||ERR[j.code]||j.msg||j.message||"Error "+r.status),{status:r.status});
   return j;
 }
 function guardarSesion(j){
@@ -322,10 +340,11 @@ async function token(){
 const paquete=()=>({perfil,avatar,dias:JSON.parse(JSON.stringify(dias,(k,v)=>k==="foto"?undefined:v))});
 function progSync(){clearTimeout(syncT);syncT=setTimeout(subir,1500)}
 async function subir(estricto){
-  if(!sesion||!srv)return;
+  if(!sesion||!srv||!perfil)return;   // sin plan no hay nada que guardar (y así nunca se pisa lo que ya hay en la nube)
   try{const t=await token();if(!t)throw new Error("sin sesión");
     await sb("/rest/v1/calori_datos?on_conflict=user_id",{cuerpo:{user_id:sesion.id,datos:paquete(),actualizado:new Date().toISOString()},token:t,extra:{Prefer:"resolution=merge-duplicates,return=minimal"}});
-    localStorage.removeItem("sucio")}catch(e){if(estricto)throw e}
+    localStorage.removeItem("sucio");if(syncErr){syncErr="";render()}
+  }catch(e){if(e.message!=="sin sesión"){syncErr="No se pudo guardar en tu cuenta: "+e.message;render()}if(estricto)throw e}
 }
 async function bajar(){
   const t=await token();if(!t)throw new Error("sin sesión");
@@ -337,7 +356,7 @@ function aplicar(d){
   perfil=d.perfil||null;avatar=d.avatar||"";dias=sd;
   try{localStorage.setItem("perfil",JSON.stringify(perfil));localStorage.setItem("avatar",JSON.stringify(avatar));localStorage.setItem("dias",JSON.stringify(dias))}catch{}
 }
-function salirLocal(){sesion=null;perfil=null;dias={};avatar="";pend={};wz=null;menu=null;tab="Inicio";["sesion","perfil","dias","avatar","sucio"].forEach(k=>localStorage.removeItem(k))}
+function salirLocal(){sesion=null;syncErr="";cargaErr="";perfil=null;dias={};avatar="";pend={};wz=null;menu=null;tab="Inicio";["sesion","perfil","dias","avatar","sucio"].forEach(k=>localStorage.removeItem(k))}
 async function entrar(){
   const reg=authModo==="Crear cuenta",pw=$("#pw").value,email=authEm.trim().toLowerCase();
   authBusy=true;authMsg="";render();
@@ -349,12 +368,16 @@ async function entrar(){
       if(!j.access_token){authBusy=false;authModo="Iniciar sesión";authMsg="✓ Cuenta creada. Revisa tu correo, confirma el enlace y luego inicia sesión.";return render()}
     }else j=await sb("/auth/v1/token?grant_type=password",{cuerpo:{email,password:pw}});
     guardarSesion(j);
-    const d=await bajar().catch(()=>({}));
-    if(d.perfil)aplicar(d);else if(perfil)subir();
     authBusy=false;authEm=authNm="";
-    if(!perfil)return wizIni();
-    tab=abrirPerfil?"Perfil":"Inicio";abrirPerfil=false;render();
+    await cargarCuenta();
   }catch(e){authBusy=false;authMsg=e.message;render()}
+}
+async function cargarCuenta(){   // trae el plan guardado en la cuenta: las preguntas solo salen si de verdad no hay plan
+  cargaErr="";
+  try{const d=await bajar();if(d.perfil)aplicar(d);else if(perfil)subir()}
+  catch(e){if(!perfil){cargaErr=e.message;return render()}}   // no se pudo leer y no hay copia en este móvil: NO se repregunta (se pisaría el plan guardado)
+  if(!perfil)return wizIni();
+  tab=abrirPerfil?"Perfil":"Inicio";abrirPerfil=false;render();
 }
 async function cerrarSesion(){
   if(!confirm("¿Cerrar sesión? Tus datos quedan guardados en tu cuenta."))return;
@@ -365,6 +388,12 @@ async function cerrarSesion(){
 }
 function cuentaCard(){
   return sesion?`<div class="card"><div class="r sb"><div style="min-width:0"><div class="t">${sesion.nombre?"Hola, "+esc(sesion.nombre):"Tu cuenta"}</div><div class="mu" style="overflow:hidden;text-overflow:ellipsis">${esc(sesion.email)}</div></div><button class="sm" onclick="cerrarSesion()">Cerrar sesión</button></div></div>`:"";
+}
+function vCargaErr(){
+  return`<div class="r" style="margin:6px 0 14px"><img src="${LOGO}" width="48" height="52" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div>
+  <div class="card"><div class="t" style="font-size:18px">No pudimos cargar tu plan</div><div class="mu" style="color:var(--ro);margin:8px 0">${esc(cargaErr)}</div>
+  <div class="mu" style="margin-bottom:12px">No te repetimos las preguntas para no pisar el plan que tengas guardado. Pulsa «Reintentar».</div>
+  <button class="p" style="width:100%" onclick="cargarCuenta()">Reintentar</button><button style="width:100%;margin-top:8px" onclick="cerrarSesion()">Cerrar sesión</button></div>`;
 }
 function vLogin(){
   const reg=authModo==="Crear cuenta";
@@ -403,11 +432,10 @@ limpiarFotos();
 abrirPerfil=enApp()&&!L("appAbierta",false);if(enApp())W("appAbierta",true);
 async function arrancar(){
   if(srv&&!sesion)return render();
-  if(srv&&sesion){try{
-    if(localStorage.getItem("sucio"))await subir();
-    else{const d=await bajar();if(d.perfil)aplicar(d);else if(perfil)subir()}
-  }catch{}}
-  if(!perfil)return wizIni();
+  if(srv&&sesion){
+    if(!localStorage.getItem("sucio")||!perfil)return cargarCuenta();
+    await subir();   // cambios de este móvil pendientes de subir: se suben antes de nada
+  }else if(!perfil)return wizIni();   // modo local (sin servidor)
   if(abrirPerfil){tab="Perfil";abrirPerfil=false}
   render();
 }
