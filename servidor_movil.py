@@ -7,6 +7,7 @@ Cada analisis exige una sesion valida de Supabase y se limita por usuario y dia.
 
 Local:  python servidor_movil.py      En un hosting: ver LEEME_HOSTING.txt
 """
+import hashlib
 import json
 import os
 import socket
@@ -43,6 +44,22 @@ ESTATICOS = {
     "/icon-512.png": "image/png",
     "/apple-touch-icon.png": "image/png",
 }
+
+
+_ver = {"clave": None, "v": ""}
+
+
+def version():
+    """Huella de los archivos de la app: cambia sola cada vez que publicas cambios (las apps instaladas la usan para actualizarse)."""
+    archivos = [HTML, AQUI / "sw.js", AQUI / "manifest.webmanifest", AQUI / "icon-192.png", AQUI / "icon-512.png"]
+    clave = tuple((f.stat().st_mtime_ns, f.stat().st_size) for f in archivos if f.exists())
+    if clave != _ver["clave"]:
+        h = hashlib.sha1()
+        for f in archivos:
+            if f.exists():
+                h.update(f.read_bytes())
+        _ver.update(clave=clave, v=h.hexdigest()[:10])
+    return _ver["v"]
 
 
 def permitido(ip):
@@ -155,6 +172,8 @@ class H(BaseHTTPRequestHandler):
 
     def _archivo(self, ruta, tipo):
         d = ruta.read_bytes()
+        if ruta.name in ("calori_movil.html", "sw.js"):
+            d = d.replace(b"__VERSION__", version().encode())
         self.send_response(200)
         self.send_header("Content-Type", tipo)
         self.send_header("Cache-Control", "no-cache")
@@ -173,6 +192,14 @@ class H(BaseHTTPRequestHandler):
             if not SUPABASE_URL or not SUPABASE_KEY:
                 return self._json(503, {"error": "El servidor no tiene configurado Supabase."})
             self._json(200, {"url": SUPABASE_URL, "key": SUPABASE_KEY})
+        elif ruta == "/api/version":
+            d = json.dumps({"v": version()}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(d)))
+            self.end_headers()
+            self.wfile.write(d)
         elif ruta == "/api/estado":
             self._json(200, {"ok": True, "apis": len(configs()), "supabase": bool(SUPABASE_URL and SUPABASE_KEY)})
         else:

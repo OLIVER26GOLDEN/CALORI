@@ -55,6 +55,7 @@ const ACT={"Sedentario (poco o nada de ejercicio)":1.2,"Ligero (1-3 dias/semana)
 const PROV={"Anthropic (Claude)":"claude-haiku-5-5","Google Gemini":"gemini-3.1-flash-lite","OpenAI":"gpt-4o-mini","Otra compatible con OpenAI":""};
 const STEPS=[["sexo","¿Eres hombre o mujer?"],["edad","¿Cuántos años tienes?"],["peso","¿Cuánto pesas ahora? (kg)"],["altura","¿Cuánto mides? (cm)"],["act","¿Cuánto ejercicio haces?"],["meta","¿Cuál es tu objetivo?"],["obj","¿Qué peso quieres alcanzar? (kg)"],["plazo","¿En cuánto tiempo quieres lograrlo?"]];
 const EMAIL="oliverlugojimenez@gmail.com",LOGO="data:image/webp;base64,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";
+const VERSION="__VERSION__";
 const PROMPT=`Eres un nutricionista. Analiza la foto de comida y devuelve SOLO un JSON valido, sin texto extra, con este formato:
 {"platos":[{"nombre":"...","gramos_estimados":0,"calorias":0,"carbohidratos_g":0,"proteinas_g":0,"grasas_g":0}],"comentario":"una frase corta sobre la comida"}
 Si hay varios platos o alimentos, un elemento por cada uno. Estima porciones de forma realista.
@@ -217,9 +218,9 @@ function cabecera(){
   if(e){ot=e.rest===0?"¡Plazo cumplido!":`Te ${e.rest===1?"queda":"quedan"} ${e.rest} ${e.rest===1?"día":"días"}`;if(!e.rest)oc="var(--am)";os=`Llevas ${e.tr} de ${e.tot} días · meta: ${perfil.peso_objetivo} kg el ${e.meta.toLocaleDateString("es-ES")}`}
   else if(perfil){ot="Mantener tu peso";os=perfil.meta==="Mantener"?"Tu objetivo es mantener tu peso actual: no hay plazo.":"Tu peso objetivo no te pide cambiar de peso: no hay plazo."}
   else{ot="Sin objetivo";oc="var(--mu)";os="Responde las preguntas de «Tu plan» para ver cuántos días te quedan."}
-  return`<div class="r sb" style="margin:6px 0 14px"><div class="r"><img src="${LOGO}" width="48" height="52" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div>
+  return`<div class="r sb" style="margin:6px 0 14px"><div class="r"><img src="${LOGO}" width="60" height="65" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div>
   <div onclick="tab='Perfil';render()">${avatar?`<img class="av" src="${avatar}">`:`<div class="av">${perfil?"👤":"?"}</div>`}</div></div>
-  ${syncErr?`<div class="card" style="padding:12px 14px;border-color:var(--ro)"><div class="mu" style="color:var(--ro);font-size:13px">⚠️ ${esc(syncErr)}</div></div>`:""}${tab==="Inicio"?bannerInstalar():""}${tab==="Inicio"?`<div class="card" style="padding:14px 18px"><div class="r" style="align-items:flex-start;gap:24px"><div><div class="mi">Racha</div><span class="t" style="font-size:30px;color:var(--am)">${a}</span><span class="mu"> ${a===1?"día":"días"}</span><div class="mu">${ok?`Hoy ya registrado · mejor: ${m}`:a?`Registra una comida hoy · mejor: ${m}`:"Registra una comida hoy para empezar"}</div></div>
+  ${hayNueva?`<div class="card" style="padding:12px 14px"><div class="r sb"><div><b>Nueva versión disponible</b><div class="mu">Actualiza para tener las últimas mejoras</div></div><button class="p sm" onclick="recargar()">Actualizar</button></div></div>`:""}${syncErr?`<div class="card" style="padding:12px 14px;border-color:var(--ro)"><div class="mu" style="color:var(--ro);font-size:13px">⚠️ ${esc(syncErr)}</div></div>`:""}${tab==="Inicio"?bannerInstalar():""}${tab==="Inicio"?`<div class="card" style="padding:14px 18px"><div class="r" style="align-items:flex-start;gap:24px"><div><div class="mi">Racha</div><span class="t" style="font-size:30px;color:var(--am)">${a}</span><span class="mu"> ${a===1?"día":"días"}</span><div class="mu">${ok?`Hoy ya registrado · mejor: ${m}`:a?`Registra una comida hoy · mejor: ${m}`:"Registra una comida hoy para empezar"}</div></div>
   <div style="flex:1"><div class="r sb"><span class="mi">Objetivo</span><b style="color:${oc};font-size:14px">${ot}</b></div><div class="bar" style="margin:8px 0 6px"><i style="width:${(e?e.fr:0)*100}%"></i></div><div class="mu">${os}</div></div></div></div>`:""}
   `;
 }
@@ -293,7 +294,8 @@ function vPerfil(){
   <div class="card"><div class="t" style="font-size:18px;margin-bottom:8px">Tus datos</div>${perfil?`<div class="mu" style="font-size:14px;line-height:1.7">${perfil.sexo} · ${perfil.edad} años · ${perfil.altura} cm · ${perfil.peso} kg<br>${esc(perfil.actividad)}<br>Objetivo: ${perfil.meta}${perfil.meta!=="Mantener"?` (${perfil.peso_objetivo} kg)`:""}</div><div style="white-space:pre-line;margin-top:10px">${esc(d)}</div>`:'<div class="mu">Aún no has rellenado tu plan.</div>'}
   <button class="p" style="width:100%;margin-top:12px" onclick="wizIni();tab='Inicio';render()">${perfil?"Cambiar mi plan paso a paso":"Crear mi plan"}</button></div>
   <div class="card"><div class="t" style="font-size:18px;margin-bottom:8px">Sugerencias</div><textarea id="sug" placeholder="Cuéntanos qué mejorarías…"></textarea>
-  <button style="width:100%;margin-top:8px" onclick="location.href='mailto:${EMAIL}?subject='+encodeURIComponent('[Calori] Sugerencia')+'&body='+encodeURIComponent($('#sug').value)">Enviar sugerencia por correo</button></div>`;
+  <button style="width:100%;margin-top:8px" onclick="location.href='mailto:${EMAIL}?subject='+encodeURIComponent('[Calori] Sugerencia')+'&body='+encodeURIComponent($('#sug').value)">Enviar sugerencia por correo</button></div>
+  <div class="card"><div class="r sb"><div><div class="t" style="font-size:15px">Versión de la app</div><div class="mu">${servido()?esc(VERSION):"modo local"}</div></div><button class="sm" onclick="buscarActualizacion(true)">Buscar actualizaciones</button></div><div class="mu" style="margin-top:6px">${esc(actMsg)}</div></div>`;
 }
 function vCfg(){
   if(srv)return`<div class="card"><div class="t" style="font-size:18px">Configuración</div><div class="mu" style="margin-top:6px;font-size:14px">✓ Todo listo: el análisis de fotos funciona sin que tengas que poner ninguna clave. Tus datos se guardan solo en este móvil.</div></div>`;
@@ -311,7 +313,7 @@ function render(){
   nv.style.display=wz?"none":"flex";
   nv.innerHTML=NAV.map(([t,i,l])=>`<button class="${t===tab?"on":""}" onclick="tab='${t}';msg='';scrollTo(0,0);render()"><span>${i}</span>${l}</button>`).join("");
   const y=scrollY;
-  if(wz){const first=!perfil;$("#a").innerHTML=(first?`<div class="r" style="margin:6px 0 14px"><img src="${LOGO}" width="48" height="52" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div><div class="mu" style="margin-bottom:10px">Contesta unas preguntas para calcular tu plan.</div>`:"")+`<div class="card">${vWiz()}</div>`;scrollTo(0,first?0:y);return}
+  if(wz){const first=!perfil;$("#a").innerHTML=(first?`<div class="r" style="margin:6px 0 14px"><img src="${LOGO}" width="60" height="65" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div><div class="mu" style="margin-bottom:10px">Contesta unas preguntas para calcular tu plan.</div>`:"")+`<div class="card">${vWiz()}</div>`;scrollTo(0,first?0:y);return}
   $("#a").innerHTML=cabecera()+(tab==="Perfil"?vPerfil()+(srv?"":vCfg()):vDia());scrollTo(0,y);
 }
 /* Cuenta con Supabase Auth: iniciar y cerrar sesión (el plan y el historial viajan con la cuenta) */
@@ -390,14 +392,14 @@ function cuentaCard(){
   return sesion?`<div class="card"><div class="r sb"><div style="min-width:0"><div class="t">${sesion.nombre?"Hola, "+esc(sesion.nombre):"Tu cuenta"}</div><div class="mu" style="overflow:hidden;text-overflow:ellipsis">${esc(sesion.email)}</div></div><button class="sm" onclick="cerrarSesion()">Cerrar sesión</button></div></div>`:"";
 }
 function vCargaErr(){
-  return`<div class="r" style="margin:6px 0 14px"><img src="${LOGO}" width="48" height="52" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div>
+  return`<div class="r" style="margin:6px 0 14px"><img src="${LOGO}" width="60" height="65" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div>
   <div class="card"><div class="t" style="font-size:18px">No pudimos cargar tu plan</div><div class="mu" style="color:var(--ro);margin:8px 0">${esc(cargaErr)}</div>
   <div class="mu" style="margin-bottom:12px">No te repetimos las preguntas para no pisar el plan que tengas guardado. Pulsa «Reintentar».</div>
   <button class="p" style="width:100%" onclick="cargarCuenta()">Reintentar</button><button style="width:100%;margin-top:8px" onclick="cerrarSesion()">Cerrar sesión</button></div>`;
 }
 function vLogin(){
   const reg=authModo==="Crear cuenta";
-  return`<div class="r" style="margin:6px 0 14px"><img src="${LOGO}" width="48" height="52" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div>
+  return`<div class="r" style="margin:6px 0 14px"><img src="${LOGO}" width="60" height="65" alt=""><div><div class="t" style="font-size:20px">Calori</div><div class="mu">Come bien, conoce tus calorías</div></div></div>
   <div class="card"><div class="t" style="font-size:20px">${reg?"Crea tu cuenta":"Bienvenido de nuevo"}</div>
   <div class="mu" style="margin:4px 0 12px">${reg?"Guarda tu plan y tus comidas y entra desde cualquier móvil.":"Entra para ver tu plan y tus comidas."}</div>
   <div class="seg">${["Iniciar sesión","Crear cuenta"].map(m=>`<button class="${m===authModo?"on":""}" onclick="authModo='${m}';authMsg='';render()">${m}</button>`).join("")}</div>
@@ -422,11 +424,32 @@ function bannerInstalar(){
   if(/iphone|ipad|ipod/i.test(navigator.userAgent))return`<div class="card" style="padding:12px 14px"><div class="r sb"><div class="mu" style="font-size:13px">Para instalarla: pulsa <b>Compartir</b> ⎋ y luego <b>Añadir a pantalla de inicio</b>.</div>${x}</div></div>`;
   return"";
 }
+/* Actualizaciones: cada vez que publicas cambios, las apps ya instaladas se ponen al día solas */
+let hayNueva=false,actMsg="";
+const servido=()=>/^[0-9a-f]{10}$/.test(VERSION);
+function recargar(){
+  try{subir()}catch{}
+  (async()=>{try{for(const k of await caches.keys())await caches.delete(k)}catch{}
+    try{const r=await navigator.serviceWorker.getRegistration();if(r)await r.update()}catch{}
+    location.reload()})();
+}
+async function buscarActualizacion(manual){
+  if(!servido())return;
+  try{
+    const r=await fetch("/api/version",{cache:"no-store"});if(!r.ok)throw 0;const{v}=await r.json();
+    if(v===VERSION){hayNueva=false;if(manual){actMsg="Ya tienes la última versión.";render()}return}
+    const libre=!wz&&!busy&&!authBusy&&!Object.keys(pend).length&&!(srv&&!sesion&&(authEm||authNm));
+    let ya=false;try{ya=sessionStorage.getItem("recarga")===v}catch{}
+    if(manual||(libre&&!ya)){try{sessionStorage.setItem("recarga",v)}catch{}return recargar()}
+    hayNueva=true;render();
+  }catch{if(manual){actMsg="No se pudo comprobar. Revisa tu conexión.";render()}}
+}
+setInterval(()=>{if(!document.hidden)buscarActualizacion()},300000);
 /* Nuevo día: pantalla en blanco para hacer fotos nuevas; se borran las fotos de días anteriores (se conservan las calorías y la racha) */
 let diaApp=hoy();
 function limpiarFotos(){let c=false;const h=hoy();for(const f in dias)if(f<h)for(const s of C)if(dias[f]?.[s]?.foto){delete dias[f][s].foto;c=true}if(c)W("dias",dias)}
 function chequeaDia(){if(hoy()!==diaApp){diaApp=hoy();fecha=diaApp;pend={};slot=C[0];msg="¡Nuevo día! Ya puedes hacer tus fotos.";limpiarFotos();render()}}
-document.addEventListener("visibilitychange",()=>{if(document.hidden)subir();else chequeaDia()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden)subir();else{chequeaDia();buscarActualizacion()}});
 setInterval(chequeaDia,30000);
 limpiarFotos();
 abrirPerfil=enApp()&&!L("appAbierta",false);if(enApp())W("appAbierta",true);
@@ -439,5 +462,5 @@ async function arrancar(){
   if(abrirPerfil){tab="Perfil";abrirPerfil=false}
   render();
 }
-fetch("/api/config").then(async r=>{if(r.ok){cfgS=await r.json();srv=true}}).catch(()=>{}).finally(arrancar);
+fetch("/api/config").then(async r=>{if(r.ok){cfgS=await r.json();srv=true}}).catch(()=>{}).finally(async()=>{await arrancar();buscarActualizacion()});
 </script></body></html>

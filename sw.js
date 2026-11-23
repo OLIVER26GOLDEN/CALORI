@@ -1,5 +1,5 @@
 // Calori: service worker minimo. Red primero (siempre la version nueva); sin red, usa la copia guardada. Nunca toca /api/.
-const V="calori-v1";
+const V="calori-__VERSION__";
 self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(["/","/manifest.webmanifest","/icon-192.png"])).catch(()=>{}));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener("fetch",e=>{
