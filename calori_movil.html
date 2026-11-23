@@ -317,7 +317,7 @@ function render(){
   $("#a").innerHTML=cabecera()+(tab==="Perfil"?vPerfil()+(srv?"":vCfg()):vDia());scrollTo(0,y);
 }
 /* Cuenta con Supabase Auth: iniciar y cerrar sesión (el plan y el historial viajan con la cuenta) */
-let sesion=L("sesion",null),cfgS=null,abrirPerfil=false,authModo="Iniciar sesión",authMsg="",authBusy=false,authEm="",authNm="",syncT=null,syncErr="",cargaErr="";
+let sesion=L("sesion",null),cfgS=null,abrirPerfil=false,authModo="Iniciar sesión",authMsg="",authBusy=false,authEm="",authNm="",authAcepta=false,syncT=null,syncErr="",cargaErr="";
 const ERR={invalid_credentials:"Correo o contraseña incorrectos",user_already_exists:"Ese correo ya tiene una cuenta. Inicia sesión.",email_exists:"Ese correo ya tiene una cuenta. Inicia sesión.",weak_password:"La contraseña es demasiado débil (mínimo 8 caracteres)",email_not_confirmed:"Confirma tu correo: te hemos enviado un enlace.",over_email_send_rate_limit:"Se han enviado demasiados correos. Prueba dentro de un rato.",over_request_rate_limit:"Demasiados intentos. Prueba más tarde.",validation_failed:"Escribe un correo válido",signup_disabled:"El registro está desactivado",PGRST205:"Falta crear la tabla calori_datos en Supabase: ejecuta supabase_calori.sql en el SQL Editor.","42P01":"Falta crear la tabla calori_datos en Supabase: ejecuta supabase_calori.sql en el SQL Editor.","42501":"Supabase no deja guardar tus datos: revisa las políticas de la tabla calori_datos."};
 async function sb(ruta,{metodo,cuerpo,token:tk,extra}={}){
   const hd={apikey:cfgS.key,"Content-Type":"application/json",...extra};
@@ -366,7 +366,8 @@ async function entrar(){
     let j;
     if(reg){
       if(pw.length<8)throw new Error("La contraseña debe tener al menos 8 caracteres");
-      j=await sb("/auth/v1/signup",{cuerpo:{email,password:pw,data:{nombre:authNm.trim()}}});
+      if(!authAcepta)throw new Error("Debes aceptar la política de privacidad para crear tu cuenta");
+      j=await sb("/auth/v1/signup",{cuerpo:{email,password:pw,data:{nombre:authNm.trim(),politica_version:"2026-11-23",politica_aceptada:new Date().toISOString()}}});
       if(!j.access_token){authBusy=false;authModo="Iniciar sesión";authMsg="✓ Cuenta creada. Revisa tu correo, confirma el enlace y luego inicia sesión.";return render()}
     }else j=await sb("/auth/v1/token?grant_type=password",{cuerpo:{email,password:pw}});
     guardarSesion(j);
@@ -408,6 +409,7 @@ function vLogin(){
   <input type="email" inputmode="email" placeholder="Correo electrónico" value="${esc(authEm)}" oninput="authEm=this.value" autocomplete="email">
   <input id="pw" type="password" placeholder="Contraseña${reg?" (mínimo 8 caracteres)":""}" autocomplete="${reg?"new-password":"current-password"}" onkeydown="if(event.key==='Enter')entrar()"></div>
   <div class="mu" style="color:${authMsg.startsWith("✓")?"var(--pr)":"var(--ro)"};margin:8px 0">${esc(authMsg)}</div>
+  ${reg?`<label class="mu" style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" ${authAcepta?"checked":""} onchange="authAcepta=this.checked" style="width:auto;margin-top:4px"><span>He leído y acepto la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>. Entiendo que las fotos de mis comidas y mis datos de salud se envían a la IA para calcular mi plan y analizar mis comidas.</span></label>`:""}
   <button class="p" style="width:100%" ${authBusy?"disabled":""} onclick="entrar()">${authBusy?"Un momento…":reg?"Crear cuenta":"Iniciar sesión"}</button></div>`;
 }
 /* App instalable (PWA) */

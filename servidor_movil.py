@@ -187,6 +187,8 @@ class H(BaseHTTPRequestHandler):
             self._archivo(HTML, "text/html; charset=utf-8")
         elif ruta in ESTATICOS and (AQUI / ruta.lstrip("/")).exists():
             self._archivo(AQUI / ruta.lstrip("/"), ESTATICOS[ruta])
+        elif ruta == "/privacidad":
+            self._archivo(AQUI / "privacidad.html", "text/html; charset=utf-8")
         elif ruta == "/api/config":
             # La URL y la clave PUBLICABLE de Supabase son publicas por diseno: la app las necesita para el login.
             if not SUPABASE_URL or not SUPABASE_KEY:
