@@ -129,13 +129,18 @@ async function ia(prompt,b64,max=1000){
   let err;for(const c of cs){try{return JSON.parse((await llamar(c,prompt,b64,max)).trim().replace(/^```(?:json)?/,"").replace(/```$/,"").trim())}catch(e){err=e}}
   throw err}
 function img(file,max,q){return new Promise((ok,ko)=>{const i=new Image,u=URL.createObjectURL(file);i.onload=()=>{const k=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=i.width*k;c.height=i.height*k;c.getContext("2d").drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL("image/jpeg",q))};i.onerror=()=>ko(new Error("Imagen no válida"));i.src=u})}
+/* Cuota diaria visible: el servidor es quien manda; aqui solo se muestra cuanto queda */
+const usadosHoy=()=>{const c=L("cuota",null);return c&&c.f===hoy()?c.n:0};
+const restantes=()=>Math.max((cfgS?.limite||10)-usadosHoy(),0);
+const sumarUso=()=>W("cuota",{f:hoy(),n:usadosHoy()+1});
 async function analizar(lista){
   if(!perfil){msg="Primero responde las preguntas de «Tu plan».";return render()}
   const f=fecha;busy=true;let ok=0;
   for(const s of lista){
+    if(srv&&restantes()<=0){msg=`Has llegado a tu límite de ${cfgS?.limite||10} análisis hoy. Vuelve mañana.`;busy=false;scanSlot=null;return render()}
     scanSlot=s;msg=`Analizando ${s.toLowerCase()}…`;render();
-    try{const r=await ia(PROMPT,pend[s].full.split(",")[1]);(dias[f]??={})[s]={foto:pend[s].thumb,resultado:r};delete pend[s];W("dias",dias);ok++}
-    catch(e){msg=`${s}: no se pudo analizar (${e.message})`;busy=false;scanSlot=null;return render()}
+    try{const r=await ia(PROMPT,pend[s].full.split(",")[1]);(dias[f]??={})[s]={foto:pend[s].thumb,resultado:r};delete pend[s];W("dias",dias);ok++;sumarUso()}
+    catch(e){if(/l[ií]mite/i.test(e.message))W("cuota",{f:hoy(),n:cfgS?.limite||10});msg=`${s}: no se pudo analizar (${e.message})`;busy=false;scanSlot=null;return render()}
   }
   msg=ok?"Listo ✓":"";busy=false;scanSlot=null;render();
 }
@@ -268,8 +273,9 @@ function vDia(){
   <div class="vis${busy&&scanSlot===slot?" scan":""}">${pv?`<img src="${pv.thumb}">`:e?.foto?`<img src="${e.foto}">`:"Elige una foto de tu plato"}</div>
   <div class="g" style="grid-template-columns:1fr 1fr;margin-top:12px"><button onclick="$('#gal').click()">Elegir foto</button><button onclick="$('#cam').click()">Hacer foto</button></div>
   ${pv&&pv.cam?`<button class="sm" style="width:100%;margin-top:8px" ${pv.guardada?"disabled":""} onclick="guardarGaleria(slot)">${pv.guardada?"✓ Guardada en la galería":"📥 Guardar foto en la galería"}</button>`:""}
-  <button class="p" style="width:100%;margin-top:8px" ${busy||!pv?"disabled":""} onclick="analizar([slot])">Analizar comida</button>
-  <button class="p" style="width:100%;margin-top:8px" ${busy||!nPend?"disabled":""} onclick="analizar(C.filter(s=>pend[s]))">Analizar todas${nPend>1?` (${nPend})`:""}</button>
+  <button class="p" style="width:100%;margin-top:8px" ${busy||!pv||(srv&&restantes()<=0)?"disabled":""} onclick="analizar([slot])">Analizar comida</button>
+  <button class="p" style="width:100%;margin-top:8px" ${busy||!nPend||(srv&&restantes()<=0)?"disabled":""} onclick="analizar(C.filter(s=>pend[s]))">Analizar todas${nPend>1?` (${nPend})`:""}</button>
+  ${srv?`<div class="mu" style="margin-top:8px;font-size:14px">Puedes analizar hasta <b>${restantes()}</b> de ${cfgS?.limite||10} fotos hoy${restantes()?"":". Vuelve mañana"}.</div>`:""}
   <div class="mu" style="margin-top:6px;font-size:11px">Para analizar todas las de hoy, pulsa «Vaciar hoy» y sube las fotos una por una.</div>
   <button style="width:100%;margin-top:10px" ${busy?"disabled":""} onclick="vaciar()">${fecha===hoy()?"Vaciar hoy":"Vaciar este día"}</button>
   <div class="mu" style="margin-top:8px">${esc(msg)}</div></div>`;

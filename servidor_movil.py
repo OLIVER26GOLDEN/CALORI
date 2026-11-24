@@ -193,7 +193,7 @@ class H(BaseHTTPRequestHandler):
             # La URL y la clave PUBLICABLE de Supabase son publicas por diseno: la app las necesita para el login.
             if not SUPABASE_URL or not SUPABASE_KEY:
                 return self._json(503, {"error": "El servidor no tiene configurado Supabase."})
-            self._json(200, {"url": SUPABASE_URL, "key": SUPABASE_KEY})
+            self._json(200, {"url": SUPABASE_URL, "key": SUPABASE_KEY, "limite": LIMITE_USUARIO_DIA})
         elif ruta == "/api/version":
             d = json.dumps({"v": version()}).encode()
             self.send_response(200)
@@ -242,13 +242,13 @@ class H(BaseHTTPRequestHandler):
         if fallo:
             return self._json(fallo[0], {"error": fallo[1]})
 
-        err = ""
         for c in cs:
             try:
                 return self._json(200, {"texto": llamar(c, prompt, b64, mx)})
             except Exception as e:  # noqa: BLE001
-                err = f"{c[0]} ({c[2]}): {str(e)[:150]}"
-        self._json(502, {"error": err})
+                # El detalle tecnico solo va a los registros del servidor, no al usuario
+                print(f"Fallo de IA {c[0]} ({c[2]}): {str(e)[:300]}", flush=True)
+        self._json(502, {"error": "El servicio de análisis no está disponible ahora. Inténtalo más tarde."})
 
     def log_message(self, *a):
         pass
