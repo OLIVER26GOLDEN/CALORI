@@ -144,17 +144,15 @@ async function analizar(lista){
   }
   msg=ok?"Listo ✓":"";busy=false;scanSlot=null;render();
 }
-async function onFoto(file,s,cam){const full=await img(file,1024,.85),thumb=await img(file,320,.6);pend[s]={full,thumb,file,cam:!!cam};msg="";render();if(cam)guardarGaleria(s,true)}
+async function onFoto(file,s,cam){const full=await img(file,1024,.85),thumb=await img(file,320,.6);pend[s]={full,thumb,file,cam:!!cam};msg="";render()}
 $("#cam").onchange=$("#gal").onchange=e=>{const f=e.target.files[0],cam=e.target.id==="cam";e.target.value="";if(f)onFoto(f,slot,cam)};
-/* Guardar en la galería: Android lo guarda solo (álbum «Descargas»); iPhone exige un toque del usuario (menú Compartir > Guardar imagen) */
+/* Guardar en la galería: SIN descarga automática. Se abre la hoja de compartir del móvil
+   (no sale la notificación de "Archivo descargado"). Solo si el navegador no tiene compartir se descarga. */
 const esIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
-async function guardarGaleria(s,auto){
+async function guardarGaleria(s){
   const f=pend[s]&&pend[s].file;if(!f||pend[s].guardada)return;
   const nombre="calori-"+new Date().toLocaleString("sv").replace(/[: ]/g,"-")+".jpg",archivo=new File([f],nombre,{type:f.type||"image/jpeg"});
-  if(esIOS){
-    if(auto)return;
-    try{if(navigator.canShare&&navigator.canShare({files:[archivo]})){await navigator.share({files:[archivo]});pend[s].guardada=true;return render()}}catch(e){if(e.name==="AbortError")return}
-  }
+  try{if(navigator.canShare&&navigator.canShare({files:[archivo]})){await navigator.share({files:[archivo]});pend[s].guardada=true;msg="Foto guardada.";return render()}}catch(e){if(e.name==="AbortError")return}
   try{const a=document.createElement("a");a.href=URL.createObjectURL(archivo);a.download=nombre;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
     pend[s].guardada=true;msg=esIOS?"Foto guardada en la app Archivos.":"Foto guardada en tu galería (álbum «Descargas»).";render()}catch{}
 }
