@@ -135,16 +135,22 @@ const restantes=()=>Math.max((cfgS?.limite||10)-usadosHoy(),0);
 const sumarUso=()=>W("cuota",{f:hoy(),n:usadosHoy()+1});
 async function analizar(lista){
   if(!perfil){msg="Primero responde las preguntas de «Tu plan».";return render()}
-  const f=fecha;busy=true;let ok=0;
-  for(const s of lista){
-    if(srv&&restantes()<=0){msg=`Has llegado a tu límite de ${cfgS?.limite||10} análisis hoy. Vuelve mañana.`;busy=false;scanSlot=null;return render()}
-    scanSlot=s;msg=`Analizando ${s.toLowerCase()}…`;render();
-    try{const r=await ia(PROMPT,pend[s].full.split(",")[1]);(dias[f]??={})[s]={foto:pend[s].thumb,resultado:r};delete pend[s];W("dias",dias);ok++;sumarUso()}
-    catch(e){if(/l[ií]mite/i.test(e.message))W("cuota",{f:hoy(),n:cfgS?.limite||10});msg=`${s}: no se pudo analizar (${e.message})`;busy=false;scanSlot=null;return render()}
-  }
-  msg=ok?"Listo ✓":"";busy=false;scanSlot=null;render();
+  const f=fecha;busy=true;let ok=0,errMsg="";
+  const cola=[...lista];
+  // hasta 3 fotos a la vez: un lote tarda bastante menos que una a una
+  const trabajar=async()=>{
+    while(cola.length){
+      if(srv&&restantes()<=0){errMsg=`Has llegado a tu límite de ${cfgS?.limite||10} análisis hoy. Vuelve mañana.`;cola.length=0;return}
+      const s=cola.shift();
+      scanSlot=s;msg=`Analizando ${lista.length} foto(s)… (${ok} listas)`;render();
+      try{const r=await ia(PROMPT,pend[s].full.split(",")[1]);(dias[f]??={})[s]={foto:pend[s].thumb,resultado:r};delete pend[s];W("dias",dias);ok++;sumarUso()}
+      catch(e){if(/l[ií]mite/i.test(e.message))W("cuota",{f:hoy(),n:cfgS?.limite||10});errMsg=`${s}: no se pudo analizar (${e.message})`;cola.length=0;return}
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(3,lista.length)},trabajar));
+  msg=errMsg||(ok?"Listo ✓":"");busy=false;scanSlot=null;render();
 }
-async function onFoto(file,s,cam){const full=await img(file,1024,.85),thumb=await img(file,320,.6);pend[s]={full,thumb,file,cam:!!cam};msg="";render()}
+async function onFoto(file,s,cam){const full=await img(file,768,.8),thumb=await img(file,320,.6);pend[s]={full,thumb,file,cam:!!cam};msg="";render()}
 $("#cam").onchange=$("#gal").onchange=e=>{const f=e.target.files[0],cam=e.target.id==="cam";e.target.value="";if(f)onFoto(f,slot,cam)};
 /* Guardar en la galería: descarga directa de la foto (el móvil puede mostrar la notificación de descarga) */
 const esIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);

@@ -139,7 +139,7 @@ def llamar(c, prompt, b64, max_tokens):
         r = requests.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent",
             headers={"x-goog-api-key": key}, timeout=180,
-            json={"contents": [{"parts": partes}], "generationConfig": {"responseMimeType": "application/json"}})
+            json={"contents": [{"parts": partes}], "generationConfig": {"responseMimeType": "application/json", "maxOutputTokens": max_tokens}})
         r.raise_for_status()
         return r.json()["candidates"][0]["content"]["parts"][0]["text"]
     if prov == "anthropic":
