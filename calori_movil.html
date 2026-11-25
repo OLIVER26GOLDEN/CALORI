@@ -51,7 +51,10 @@ nav button span{font-size:20px;line-height:1}nav button.on{color:var(--pr)}
 <input id="gal" type="file" accept="image/*" class="hide">
 <input id="avf" type="file" accept="image/*" class="hide">
 <script>
-const C=["Desayuno","Aperitivo","Comida","Merienda","Cena"],R={Desayuno:.2,Aperitivo:.1,Comida:.3,Merienda:.1,Cena:.3};
+const BASE_C=["Desayuno","Aperitivo","Comida","Merienda","Cena"],R={Desayuno:.2,Aperitivo:.1,Comida:.3,Merienda:.1,Cena:.3};
+const SUGERIDAS=["Bebidas","Postre","Snack","Pre-entreno"];
+let C=BASE_C.slice(),catAbierta=false;   // C = comidas base + las extra que el usuario añade (se guardan en perfil.extras)
+function setCats(){C=[...BASE_C,...(perfil?.extras||[])]}
 const ACT={"Sedentario (poco o nada de ejercicio)":1.2,"Ligero (1-3 dias/semana)":1.375,"Moderado (3-5 dias/semana)":1.55,"Alto (6-7 dias/semana)":1.725};
 const PROV={"Anthropic (Claude)":"claude-haiku-5-5","Google Gemini":"gemini-3.1-flash-lite","OpenAI":"gpt-4o-mini","Otra compatible con OpenAI":""};
 const STEPS=[["sexo","¿Eres hombre o mujer?"],["edad","¿Cuántos años tienes?"],["peso","¿Cuánto pesas ahora? (kg)"],["altura","¿Cuánto mides? (cm)"],["act","¿Cuánto ejercicio haces?"],["meta","¿Cuál es tu objetivo?"],["obj","¿Qué peso quieres alcanzar? (kg)"],["plazo","¿En cuánto tiempo quieres lograrlo?"]];
@@ -183,6 +186,7 @@ function wizFin(){
     const cambio=!prev.fecha_meta||["peso_objetivo","plazo","unidad","meta"].some(k=>prev[k]!==d[k]);
     if(cambio){const h=new Date(),m=new Date();m.setDate(m.getDate()+diasDe(d));d.fecha_inicio=h.toLocaleDateString("sv");d.fecha_meta=m.toLocaleDateString("sv")}
     else{d.fecha_inicio=prev.fecha_inicio;d.fecha_meta=prev.fecha_meta}}
+  d.extras=perfil?.extras||[];   // las categorías extra del usuario no se pierden al rehacer el plan
   perfil=d;W("perfil",d);wz=null;menu=null;render();if(sesion)subir();
 }
 async function plazoIA(){
@@ -272,7 +276,9 @@ function vDia(){
   <span class="pill" style="color:${col};background:${resto<0?"#fbe4e4":"#dcefe7"}">${resto>=0?`Te quedan ${Math.round(resto)} kcal`:`Te has pasado ${Math.round(-resto)} kcal`}</span></div></div>
   <div class="g" style="grid-template-columns:repeat(3,1fr);margin-top:14px">${metas.map(([n,k,m,c])=>`<div class="tile" style="padding:10px 10px"><div class="mi" style="color:${c};font-size:9px">${n}</div><div><b style="font-size:20px">${Math.round(tot[k])}</b><span class="mu"> / ${Math.round(m)} g</span></div><div class="bar m" style="margin-top:6px"><i style="width:${m?Math.min(tot[k]/m,1)*100:0}%;background:${c}"></i></div></div>`).join("")}</div></div>`;
   h+=`<!--A--><div class="card"><div class="t" style="font-size:18px">Escanear comida</div><div class="mu" style="margin-bottom:8px">Elige la comida, sube su foto y la IA estima calorías y macros</div>
-  <div class="seg" style="margin-bottom:10px">${C.map(s=>`<button style="font-size:11px;${pend[s]?"color:var(--pr)":""}" class="${s===slot?"on":""}" onclick="slot='${s}';msg='';render()">${s}</button>`).join("")}</div>
+  <div class="seg" style="margin-bottom:10px">${C.map(s=>`<button style="font-size:11px;${pend[s]?"color:var(--pr)":""}" class="${s===slot?"on":""}" onclick="slot='${s}';msg='';render()">${s}</button>`).join("")}${C.length<BASE_C.length+4?`<button style="font-size:18px;font-weight:700;color:var(--pr)" onclick="catAbierta=!catAbierta;render()">+</button>`:""}</div>
+  ${catAbierta?`<div class="r" style="flex-wrap:wrap;margin-bottom:10px">${SUGERIDAS.filter(x=>!C.includes(x)).map(x=>`<button class="sm" onclick="addCat('${x}')">${x}</button>`).join("")}<input id="ncat" placeholder="Otra categoría" maxlength="20" style="flex:1;min-width:120px;height:36px"><button class="sm" onclick="addCat($('#ncat').value)">Añadir</button></div>`:""}
+  ${(perfil?.extras||[]).includes(slot)?`<div style="text-align:right;margin:-4px 0 8px"><button class="sm" onclick="quitarCat(slot)">Quitar «${esc(slot)}»</button></div>`:""}
   <div class="vis${busy&&scanSlot===slot?" scan":""}">${pv?`<img src="${pv.thumb}">`:e?.foto?`<img src="${e.foto}">`:"Elige una foto de tu plato"}</div>
   <div class="g" style="grid-template-columns:1fr 1fr;margin-top:12px"><button onclick="$('#gal').click()">Elegir foto</button><button onclick="$('#cam').click()">Hacer foto</button></div>
   ${pv&&pv.cam?`<button class="sm" style="width:100%;margin-top:8px" ${pv.guardada?"disabled":""} onclick="guardarGaleria(slot)">${pv.guardada?"✓ Guardada en la galería":"📥 Guardar foto en la galería"}</button>`:""}
@@ -284,7 +290,7 @@ function vDia(){
   <div class="mu" style="margin-top:8px">${esc(msg)}</div></div>`;
   h+=`<!--A--><div class="card"><div class="r sb"><div class="r"><span class="t" style="font-size:18px">Comidas de ${fecha===hoy()?"hoy":fecha}</span><span class="pill" style="background:#dcefe7;color:var(--pr)">${np} plato${np!==1?"s":""}</span></div></div>
   <div class="r" style="margin:8px 0 0"><input type="date" value="${fecha}" onchange="fecha=this.value||hoy();render()" style="flex:1"><button class="sm" onclick="vaciar()">Vaciar día</button></div>`;
-  for(const s of C){const en=dias[fecha]?.[s],pl=platosDe(fecha,s),k=pl.reduce((a,p)=>a+num(p.calorias),0),ob=Math.round(lim*R[s]);
+  for(const s of C){const en=dias[fecha]?.[s],pl=platosDe(fecha,s),k=pl.reduce((a,p)=>a+num(p.calorias),0),ob=Math.round(lim*(R[s]??0));
     h+=`<div class="sec">${en?.foto?`<img src="${en.foto}">`:'<div class="ph">—</div>'}<div style="flex:1"><div class="t" style="font-size:15px">${s}</div><div class="mu">${esc(en?en.resultado.comentario||"":"Sin foto todavía")}</div></div><div style="text-align:right"><div class="t" style="font-size:20px;color:${k>ob?"var(--ro)":en?"var(--pr)":"var(--mu)"}">${Math.round(k)}</div><div class="mi">de ${ob} kcal</div></div></div>`;
     pl.forEach((p,i)=>h+=`<div class="pl"><div class="n">${i+1}</div><div style="flex:1"><div class="t">${esc(p.nombre||"?")}</div><div class="mu">${s}${p.gramos_estimados!==undefined?` · ${esc(p.gramos_estimados)} g`:""}</div>
     <div style="margin-top:3px"><span class="pill" style="font-size:11px;color:var(--ph);background:#e3f3ec">P ${esc(p.proteinas_g??0)} g</span> <span class="pill" style="font-size:11px;color:var(--am);background:#faefdc">C ${esc(p.carbohidratos_g??0)} g</span> <span class="pill" style="font-size:11px;color:var(--co);background:#fbe9de">G ${esc(p.grasas_g??0)} g</span></div></div>
@@ -293,6 +299,21 @@ function vDia(){
   
   if(perfil&&!wz)h+=`<!--A--><div class="card">${vMenu()}</div>`;
   const P=h.split("<!--A-->");return tab==="Inicio"?P[0]+P[1]:tab==="Hoy"?P[2]:(P[3]||"");
+}
+function addCat(n){
+  n=(n||"").trim().slice(0,20);
+  if(!perfil)return;
+  if(!n){msg="Escribe un nombre para la categoría";return render()}
+  if(C.includes(n)){msg="Ya existe una categoría con ese nombre";return render()}
+  if((perfil.extras||[]).length>=4){msg="Puedes añadir hasta 4 categorías extra";return render()}
+  perfil.extras=[...(perfil.extras||[]),n];W("perfil",perfil);
+  catAbierta=false;slot=n;msg="";setCats();render();
+}
+function quitarCat(n){
+  if(Object.values(dias).some(d=>d?.[n]))return alert("«"+n+"» tiene comidas guardadas. Bórralas antes de quitar la categoría.");
+  if(!confirm("¿Quitar la categoría «"+n+"»?"))return;
+  perfil.extras=(perfil.extras||[]).filter(x=>x!==n);W("perfil",perfil);
+  slot=C[0];msg="";setCats();render();
 }
 function vaciar(){if(confirm("Se borrarán las comidas y las fotos guardadas de "+(fecha===hoy()?"hoy":"este día")+".\n¿Continuar?")){delete dias[fecha];pend={};slot=C[0];msg="";W("dias",dias);render()}}
 function vPerfil(){
@@ -317,6 +338,7 @@ function vCfg(){
 }
 const NAV=[["Inicio","🏠","Inicio"],["Hoy","🍽️","Comidas de hoy"],["Menú","✨","Comidas del día"],["Perfil","👤","Perfil"]];
 function render(){
+  setCats();
   const nv=$("#nav");if(srv&&!sesion){nv.style.display="none";$("#a").innerHTML=vLogin();return}
   if(srv&&sesion&&cargaErr&&!perfil){nv.style.display="none";$("#a").innerHTML=vCargaErr();return}
   nv.style.display=wz?"none":"flex";
