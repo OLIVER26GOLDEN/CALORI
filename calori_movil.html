@@ -2,12 +2,13 @@
 <html lang="es"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff"><meta name="color-scheme" content="light"><meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Calori"><meta name="apple-mobile-web-app-title" content="Calori">
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="icon" href="/icon-192.png">
 <title>Calori</title>
 <style>
 :root{--bg:#fff;--s0:#f1f5f9;--s2:#f8fafc;--s3:#eef2f7;--s4:#e2e8f0;--bd:#e2e8f0;--tx:#0f172a;--mu:#64748b;--pr:#047857;--pc:#10b981;--ph:#059669;--am:#d97706;--co:#ea580c;--ro:#dc2626}
+html{background:#fff;color-scheme:light}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px system-ui,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 main{max-width:560px;margin:0 auto;padding:14px}
@@ -44,7 +45,7 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-conte
 nav button{flex:1;max-width:140px;height:60px;border:0;border-radius:0;background:none;color:var(--mu);font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 2px}
 nav button span{font-size:20px;line-height:1}nav button.on{color:var(--pr)}
 </style></head><body>
-<main id="a"></main>
+<main id="a"><div style="text-align:center;padding-top:40vh"><div class="t" style="font-size:22px;color:var(--pr)">Calori</div><div class="mu" style="margin-top:8px;font-size:14px">Cargando…</div></div></main>
 <nav id="nav"></nav>
 <input id="cam" type="file" accept="image/*" capture="environment" class="hide">
 <input id="gal" type="file" accept="image/*" class="hide">

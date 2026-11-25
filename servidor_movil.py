@@ -139,7 +139,7 @@ def llamar(c, prompt, b64, max_tokens):
         r = requests.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent",
             headers={"x-goog-api-key": key}, timeout=180,
-            json={"contents": [{"parts": partes}], "generationConfig": {"responseMimeType": "application/json", "maxOutputTokens": max_tokens}})
+            json={"contents": [{"parts": partes}], "generationConfig": {"responseMimeType": "application/json"}})
         r.raise_for_status()
         return r.json()["candidates"][0]["content"]["parts"][0]["text"]
     if prov == "anthropic":
@@ -237,17 +237,19 @@ class H(BaseHTTPRequestHandler):
         if not cs:
             return self._json(500, {"error": "El servidor no tiene claves de IA configuradas"})
 
-        # 3) Limite diario del usuario (se cuenta justo antes de llamar a la IA)
-        fallo = registrar_uso(auth)
-        if fallo:
-            return self._json(fallo[0], {"error": fallo[1]})
-
+        # 3) La IA se llama primero y solo se cuenta el analisis si sale bien:
+        #    un fallo (timeout, respuesta cortada, error de Google) no gasta una oportunidad.
         for c in cs:
             try:
-                return self._json(200, {"texto": llamar(c, prompt, b64, mx)})
+                texto = llamar(c, prompt, b64, mx)
             except Exception as e:  # noqa: BLE001
                 # El detalle tecnico solo va a los registros del servidor, no al usuario
                 print(f"Fallo de IA {c[0]} ({c[2]}): {str(e)[:300]}", flush=True)
+                continue
+            fallo = registrar_uso(auth)
+            if fallo:
+                return self._json(fallo[0], {"error": fallo[1]})
+            return self._json(200, {"texto": texto})
         self._json(502, {"error": "El servicio de análisis no está disponible ahora. Inténtalo más tarde."})
 
     def log_message(self, *a):
