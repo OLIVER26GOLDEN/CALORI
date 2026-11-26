@@ -138,8 +138,9 @@ const usadosHoy=()=>{const c=L("cuota",null);return c&&c.f===hoy()?c.n:0};
 const restantes=()=>Math.max((cfgS?.limite||10)-usadosHoy(),0);
 const sumarUso=()=>W("cuota",{f:hoy(),n:usadosHoy()+1});
 async function analizar(lista){
+  if(busy)return;   // un segundo toque mientras se analiza no hace nada (no gasta otra oportunidad)
   if(!perfil){msg="Primero responde las preguntas de «Tu plan».";return render()}
-  const f=fecha;busy=true;let ok=0,errMsg="";
+  const f=fecha;busy=true;render();let ok=0,errMsg="";
   const cola=[...lista];
   // hasta 3 fotos a la vez: un lote tarda bastante menos que una a una
   const trabajar=async()=>{
