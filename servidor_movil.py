@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import socket
+import threading
 import time
 from collections import defaultdict, deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -31,6 +32,8 @@ PUERTO = int(os.getenv("PORT") or os.getenv("PUERTO_MOVIL") or 8000)
 LIMITE_HORA = int(os.getenv("LIMITE_HORA", "30"))        # analisis por IP y hora
 LIMITE_DIA = int(os.getenv("LIMITE_DIA_TOTAL", "1500"))  # analisis totales al dia (protege tu cuota)
 LIMITE_USUARIO_DIA = int(os.getenv("LIMITE_USUARIO_DIA", "10"))  # analisis por usuario y dia
+MAX_ANALISIS_A_LA_VEZ = int(os.getenv("MAX_ANALISIS_A_LA_VEZ", "6"))  # llamadas simultaneas a la IA
+_turno_ia = threading.BoundedSemaphore(MAX_ANALISIS_A_LA_VEZ)
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
 _hist = defaultdict(deque)
@@ -219,7 +222,7 @@ class H(BaseHTTPRequestHandler):
 
         try:
             n = int(self.headers.get("Content-Length", 0))
-            if n > 15_000_000:
+            if n > 2_000_000:   # la app envía fotos reducidas (~100-200 KB); esto solo corta envíos enormes
                 return self._json(413, {"error": "Foto demasiado grande"})
             q = json.loads(self.rfile.read(n))
             prompt, b64 = str(q.get("prompt", "")), str(q.get("imagen", ""))
@@ -239,17 +242,24 @@ class H(BaseHTTPRequestHandler):
 
         # 3) La IA se llama primero y solo se cuenta el analisis si sale bien:
         #    un fallo (timeout, respuesta cortada, error de Google) no gasta una oportunidad.
-        for c in cs:
-            try:
-                texto = llamar(c, prompt, b64, mx)
-            except Exception as e:  # noqa: BLE001
-                # El detalle tecnico solo va a los registros del servidor, no al usuario
-                print(f"Fallo de IA {c[0]} ({c[2]}): {str(e)[:300]}", flush=True)
-                continue
-            fallo = registrar_uso(auth)
-            if fallo:
-                return self._json(fallo[0], {"error": fallo[1]})
-            return self._json(200, {"texto": texto})
+        #    Como mucho MAX_ANALISIS_A_LA_VEZ llamadas a la IA a la vez; el resto espera un poco.
+        if not _turno_ia.acquire(timeout=20):
+            # 503 con "ocupado": la app reintenta sola y muestra "Esperando turno"
+            return self._json(503, {"error": "Hay mucha gente analizando ahora mismo.", "ocupado": True})
+        try:
+            for c in cs:
+                try:
+                    texto = llamar(c, prompt, b64, mx)
+                except Exception as e:  # noqa: BLE001
+                    # El detalle tecnico solo va a los registros del servidor, no al usuario
+                    print(f"Fallo de IA {c[0]} ({c[2]}): {str(e)[:300]}", flush=True)
+                    continue
+                fallo = registrar_uso(auth)
+                if fallo:
+                    return self._json(fallo[0], {"error": fallo[1]})
+                return self._json(200, {"texto": texto})
+        finally:
+            _turno_ia.release()
         self._json(502, {"error": "El servicio de análisis no está disponible ahora. Inténtalo más tarde."})
 
     def log_message(self, *a):
