@@ -231,7 +231,8 @@ class H(BaseHTTPRequestHandler):
             return self._json(400, {"error": "Peticion no valida"})
 
         # 2) Limites generales (por IP y total del dia)
-        ip = (self.headers.get("X-Forwarded-For") or self.client_address[0]).split(",")[0].strip()
+        # Render añade al final la IP real que le conecta; la primera la puede escribir cualquiera, así que se usa la última
+        ip = (self.headers.get("X-Forwarded-For") or self.client_address[0]).split(",")[-1].strip()
         aviso = permitido(ip)
         if aviso:
             return self._json(429, {"error": aviso})
