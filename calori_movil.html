@@ -36,6 +36,8 @@ textarea{height:80px;padding:10px}
 .vis{position:relative}
 .vis img{width:100%;height:100%;object-fit:cover}
 .vis.scan::before{content:"";position:absolute;inset:0;background:rgba(16,185,129,.12);z-index:1}
+.vis .scan-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:3;pointer-events:none}
+.vis .scan-txt span{background:rgba(15,23,42,.78);color:#fff;font-weight:700;font-size:15px;padding:8px 18px;border-radius:20px}
 .vis.scan::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--pc);box-shadow:0 0 14px 5px rgba(16,185,129,.75);z-index:2;animation:scan 1.5s ease-in-out infinite alternate}
 @keyframes scan{from{top:0}to{top:calc(100% - 3px)}}
 .av{width:44px;height:44px;border-radius:22px;background:var(--pc);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;object-fit:cover}
@@ -280,7 +282,7 @@ function vDia(){
   <div class="seg" style="margin-bottom:10px">${C.map(s=>`<button style="font-size:11px;${pend[s]?"color:var(--pr)":""}" class="${s===slot?"on":""}" onclick="slot='${s}';msg='';render()">${s}</button>`).join("")}${C.length<BASE_C.length+4?`<button style="font-size:18px;font-weight:700;color:var(--pr)" onclick="catAbierta=!catAbierta;render()">+</button>`:""}</div>
   ${catAbierta?`<div class="r" style="flex-wrap:wrap;margin-bottom:10px">${SUGERIDAS.filter(x=>!C.includes(x)).map(x=>`<button class="sm" onclick="addCat('${x}')">${x}</button>`).join("")}<input id="ncat" placeholder="Otra categoría" maxlength="20" style="flex:1;min-width:120px;height:36px"><button class="sm" onclick="addCat($('#ncat').value)">Añadir</button></div>`:""}
   ${(perfil?.extras||[]).includes(slot)?`<div style="text-align:right;margin:-4px 0 8px"><button class="sm" onclick="quitarCat(slot)">Quitar «${esc(slot)}»</button></div>`:""}
-  <div class="vis${busy&&scanSlot===slot?" scan":""}">${pv?`<img src="${pv.thumb}">`:e?.foto?`<img src="${e.foto}">`:"Elige una foto de tu plato"}</div>
+  <div class="vis${busy&&scanSlot===slot?" scan":""}">${pv?`<img src="${pv.thumb}">`:e?.foto?`<img src="${e.foto}">`:"Elige una foto de tu plato"}${busy&&scanSlot===slot?`<div class="scan-txt"><span>Analizando…</span></div>`:""}</div>
   <div class="g" style="grid-template-columns:1fr 1fr;margin-top:12px"><button onclick="$('#gal').click()">Elegir foto</button><button onclick="$('#cam').click()">Hacer foto</button></div>
   ${pv&&pv.cam?`<button class="sm" style="width:100%;margin-top:8px" ${pv.guardada?"disabled":""} onclick="guardarGaleria(slot)">${pv.guardada?"✓ Guardada en la galería":"📥 Guardar foto en la galería"}</button>`:""}
   <button class="p" style="width:100%;margin-top:8px" ${busy||!pv||(srv&&restantes()<=0)?"disabled":""} onclick="analizar([slot])">Analizar comida</button>
