@@ -488,7 +488,7 @@ function bannerInstalar(){
   const x=`<button style="background:none;border:0;color:var(--mu);height:30px;padding:0 6px" onclick="W('instNo',true);render()">✕</button>`;
   // Dentro del navegador de LinkedIn/Facebook/Instagram no se puede instalar: se ofrece abrirla en Chrome (Android) o en Safari (iPhone)
   if(/LinkedInApp|FBAN|FBAV|Instagram/i.test(navigator.userAgent)){
-    if(/android/i.test(navigator.userAgent))return`<div class="card" style="padding:12px 14px"><div class="r sb"><div><b>Instala Calori en tu móvil</b><div class="mu">Este navegador no permite instalarla. Ábrela en Chrome.</div></div><div class="r"><a href="intent://${location.host}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end" style="display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:18px;background:var(--pc);color:#fff;font-weight:700;text-decoration:none">Abrir en Chrome</a>${x}</div></div></div>`;
+    if(/android/i.test(navigator.userAgent))return`<div class="card" style="padding:12px 14px"><div class="r sb"><div><b>Instala Calori en tu móvil</b><div class="mu">Este navegador no permite instalarla. Pulsa <b>⋮</b> arriba a la derecha y elige <b>Abrir en el navegador</b>.</div></div><div class="r">${x}</div></div></div>`;
     return`<div class="card" style="padding:12px 14px"><div class="r sb"><div class="mu" style="font-size:13px">Para instalarla, pulsa <b>⋯</b> o el icono de compartir y elige <b>Abrir en Safari</b>.</div>${x}</div></div>`;
   }
   if(instEv)return`<div class="card" style="padding:12px 14px"><div class="r sb"><div><b>Instala Calori</b><div class="mu">Ábrela como una app, sin el navegador</div></div><div class="r"><button class="p sm" onclick="instalar()">Instalar</button>${x}</div></div></div>`;
